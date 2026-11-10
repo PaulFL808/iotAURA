@@ -71,9 +71,23 @@ label.ck{display:flex;gap:7px;align-items:center;font-size:12px;cursor:pointer}
 label.ck input{accent-color:var(--accent);width:14px;height:14px;margin:0}
 .help{font-size:11px;color:var(--muted);border-top:1px solid var(--line);padding-top:10px;margin:0;display:grid;grid-template-columns:auto 1fr;gap:2px 8px}
 .help b{color:var(--ink);font-weight:600}
-.cars{display:flex;flex-wrap:wrap;gap:5px}
-.car{display:flex;align-items:center;gap:6px;font-size:11.5px;padding:4px 7px}
-.car i{width:11px;height:11px;border-radius:2px;flex:none;border:1px solid var(--line)}
+.cars{display:flex;flex-direction:column;gap:5px;max-height:220px;overflow-y:auto;padding-right:2px}
+.car-card{display:flex;align-items:center;justify-content:space-between;gap:6px;padding:6px 8px;background:var(--chip);border:1px solid var(--line);border-radius:6px;cursor:pointer;transition:all .15s;text-align:left;width:100%}
+.car-card:hover{border-color:var(--accent)}
+.car-card[aria-pressed="true"]{background:rgba(59,130,246,0.18);border-color:#3b82f6;box-shadow:0 0 0 1px #3b82f6}
+.car-card-main{display:flex;align-items:center;gap:7px;min-width:0}
+.car-card-color{width:12px;height:12px;border-radius:3px;flex:none;border:1px solid rgba(255,255,255,0.25)}
+.car-card-text{display:flex;flex-direction:column;min-width:0;line-height:1.2}
+.car-card-title{font-weight:600;font-size:11.5px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.car-card-driver{font-size:10px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.plate-tag{font:700 9.5px var(--mono);padding:2px 5px;border-radius:4px;white-space:nowrap;letter-spacing:.04em;flex:none}
+.plate-tag.reg{background:rgba(16,185,129,0.15);color:#10b981;border:1px solid rgba(16,185,129,0.4)}
+.plate-tag.unreg{background:rgba(239,68,68,0.15);color:#ef4444;border:1px solid rgba(239,68,68,0.4)}
+.alpr-box{background:var(--chip);border:1px solid var(--line);border-radius:6px;padding:8px 10px;display:flex;flex-direction:column;gap:5px}
+.alpr-header{display:flex;align-items:center;justify-content:space-between;font-size:11px}
+.alpr-plate-list{display:flex;flex-wrap:wrap;gap:4px;max-height:80px;overflow-y:auto}
+.alpr-chip{font:600 9px var(--mono);padding:2px 5px;border-radius:3px;background:rgba(16,185,129,0.12);color:#10b981;border:1px solid rgba(16,185,129,0.3)}
+.btn-action-small{font-size:10.5px;padding:4px 6px;border-radius:4px}
 .keys{font-size:11px;color:var(--muted);margin:0}
 kbd{font:600 10.5px var(--mono);border:1px solid var(--line);border-bottom-width:2px;border-radius:3px;padding:1px 4px;color:var(--ink);background:var(--chip)}
 .stage{position:relative;min-width:0;min-height:0;overflow:hidden;background-color:var(--stage);
@@ -208,10 +222,29 @@ kbd{font:600 10.5px var(--mono);border:1px solid var(--line);border-bottom-width
       </div>
     </div>
 
-    <div class="sec"><h2>Autos · Elige cuál conducir</h2><div class="cars" id="cars"></div>
-      <div class="row"><button id="btnAdd">Agregar auto</button><button id="btnReset">Reiniciar</button></div>
+    <!-- Sección de Autos y Control ALPR -->
+    <div class="sec">
+      <h2>Autos · Control por Patente (ALPR)</h2>
+      <div class="cars" id="cars"></div>
+      <div class="row" style="margin-top:2px;">
+        <button id="btnTeleport" class="btn-action-small" onclick="window.teleportActiveCar()" title="Llevar el auto seleccionado al inicio de la entrada">⚡ Llevar a Entrada</button>
+        <button id="btnSpawnTest" class="btn-action-small" onclick="window.spawnRandomTestCar()" title="Agregar auto de prueba no registrado">🎲 Auto No Registrado</button>
+        <button id="btnReset" class="btn-action-small" onclick="reset()" title="Reiniciar posiciones">Reiniciar</button>
+      </div>
       <p class="keys">Flechas o <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> para conducir, <kbd>Espacio</kbd> para frenar.</p>
       <p class="note" id="aviso" hidden></p>
+    </div>
+
+    <!-- Patentes Autorizadas en el Sistema (Firebase) -->
+    <div class="sec alpr-box">
+      <div class="alpr-header">
+        <span style="font-weight:600; color:var(--ink);">Patentes Registradas (Web):</span>
+        <span id="alprCount" class="alpr-chip">0 activas</span>
+      </div>
+      <div class="alpr-plate-list" id="alprList"></div>
+      <small style="font-size:9.5px; color:var(--muted); line-height:1.2;">
+        🟢 Registrada = abre barrera. 🔴 No registrada = barrera bloqueada.
+      </small>
     </div>
     <div class="sec"><h2>Vistas de Cámara</h2><div class="row" id="views"></div></div>
     <div class="sec"><h2>Capas</h2>
@@ -1367,16 +1400,118 @@ obs(XE1+22,XE1+28,Y0/2-3,Y0/2+3,56);              // poste del cartel ENTRADA
 (function(){ const m=mat([.82,.8,.74]); [[-3,0,0,YL0],[-3,0,YL1,H],[0,XC0,-3,0],[XE1,W,-3,0]].forEach(r=>{ obs(r[0],r[1],r[2],r[3],4);
   add(root,new THREE.BoxGeometry(r[1]-r[0],r[3]-r[2],4),m,(r[0]+r[1])/2,(r[2]+r[3])/2,10); }); })();
 
-// ---------- Autos ----------
-const PALETTE=[[[.8,.1,.1],'rojo'],[[.95,.6,.1],'naranja'],[[.1,.3,.8],'azul'],[[.2,.6,.3],'verde'],[[.9,.9,.9],'blanco'],[[.5,.5,.5],'gris']];
+// ---------- Autos y Sistema ALPR (Reconocimiento de Patente) ----------
+const PALETTE=[
+  [[.8,.1,.1],'rojo'],
+  [[.95,.6,.1],'naranja'],
+  [[.1,.3,.8],'azul'],
+  [[.2,.6,.3],'verde'],
+  [[.9,.9,.9],'blanco'],
+  [[.5,.5,.5],'gris'],
+  [[.7,.2,.8],'morado'],
+  [[.95,.8,.1],'amarillo'],
+  [[.1,.7,.8],'celeste']
+];
 const LEN=110,WID=60,AXLE=22,WB=66, SPAWN=[60,-ROAD/2,0];
+
+// Registro y Autorización de Patentes (ALPR)
+const DEFAULT_AUTH = [
+  { plate: 'PF-80-88', driver: 'Paul Ferrada (iotAURA)' },
+  { plate: 'FM-20-26', driver: 'Fabián Mora (iotAURA)' },
+  { plate: 'FL-12-34', driver: 'Felipe Labarca (iotAURA)' },
+  { plate: 'AC-56-78', driver: 'Agustín Cañas (iotAURA)' },
+  { plate: 'LX-44-02', driver: 'Carlos Mella (E-04)' },
+  { plate: 'KJ-89-21', driver: 'Valentina Soto (E-02)' },
+  { plate: 'PR-77-31', driver: 'Ignacio Silva (E-06)' }
+];
+
+const authMap = new Map();
+function cleanPlate(p){ return p ? String(p).toUpperCase().replace(/[^A-Z0-9]/g, '') : ''; }
+DEFAULT_AUTH.forEach(item => authMap.set(cleanPlate(item.plate), item.driver));
+
+function isPlateAuthorized(plate){
+  return authMap.has(cleanPlate(plate));
+}
+
+function getPlateDriver(plate){
+  return authMap.get(cleanPlate(plate)) || 'Sin Reserva';
+}
+
+function generateRandomPlate(){
+  const letters = 'BCDFGHJKLPRSTVWXYZ';
+  let p = '';
+  for(let i=0; i<4; i++) p += letters[Math.floor(Math.random() * letters.length)];
+  let n = Math.floor(Math.random() * 90 + 10);
+  return `${p.slice(0,2)}-${p.slice(2,4)}-${n}`;
+}
+
+function updateAlprChips(){
+  const listEl = $('alprList');
+  const countEl = $('alprCount');
+  if(!listEl) return;
+  listEl.innerHTML = '';
+  let count = 0;
+  authMap.forEach((driver, pl) => {
+    count++;
+    const span = document.createElement('span');
+    span.className = 'alpr-chip';
+    span.title = driver;
+    const disp = pl.length === 6 ? `${pl.slice(0,2)}-${pl.slice(2,4)}-${pl.slice(4)}` : pl;
+    span.textContent = disp;
+    listEl.appendChild(span);
+  });
+  if(countEl) countEl.textContent = `${count} activas`;
+}
+
+function makePlateCanvasTexture(plateText, isRegistered){
+  const cv = document.createElement('canvas');
+  cv.width = 128; cv.height = 36;
+  const ctx = cv.getContext('2d');
+  ctx.fillStyle = isRegistered ? '#ffffff' : '#fee2e2';
+  ctx.fillRect(0, 0, 128, 36);
+  ctx.fillStyle = '#1d4ed8'; // Banda azul Chile
+  ctx.fillRect(0, 0, 128, 6);
+  ctx.lineWidth = 3;
+  ctx.strokeStyle = isRegistered ? '#10b981' : '#dc2626';
+  ctx.strokeRect(1.5, 1.5, 125, 33);
+  ctx.fillStyle = '#0f172a';
+  ctx.font = 'bold 18px "IBM Plex Mono",monospace';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(plateText || 'SIN-PAT', 64, 21);
+  const tx = new THREE.CanvasTexture(cv);
+  tx.encoding = THREE.sRGBEncoding;
+  return tx;
+}
+
 // Punto de referencia del auto: centro del eje trasero. La carrocería va de -22 a +88 mm.
-function buildCar(c){ const g=new THREE.Group(), body=mat(c), tire=mat([.08,.08,.08]), o=-AXLE;
-  add(g,new THREE.BoxGeometry(110,60,19),body,o+55,0,14.5); add(g,new THREE.BoxGeometry(55,52,14),body,o+52,0,31);
+function buildCar(c, plate, isRegistered){
+  const g=new THREE.Group(), body=mat(c), tire=mat([.08,.08,.08]), o=-AXLE;
+  add(g,new THREE.BoxGeometry(110,60,19),body,o+55,0,14.5);
+  add(g,new THREE.BoxGeometry(55,52,14),body,o+52,0,31);
   [22,88].forEach(x=>[-27,27].forEach(y=>add(g,new THREE.CylinderGeometry(8,8,7,20),tire,o+x,y,8)));
   const hl=new THREE.MeshStandardMaterial({color:col(1,.95,.6),emissive:col(1,.9,.5),emissiveIntensity:.9}), tl=new THREE.MeshStandardMaterial({color:col(.9,.05,.05),emissive:col(.9,.05,.05),emissiveIntensity:.6});
   [-20,20].forEach(y=>{ add(g,new THREE.BoxGeometry(2,12,6),hl,o+110.5,y,17); add(g,new THREE.BoxGeometry(2,12,5),tl,o-.5,y,17); });
-  return g; }
+
+  // Placas de patente 3D delantera y trasera
+  const pTx = makePlateCanvasTexture(plate, isRegistered);
+  const pMat = new THREE.MeshBasicMaterial({map: pTx});
+  
+  const fp = new THREE.Mesh(new THREE.PlaneGeometry(16, 5), pMat);
+  fp.position.set(o + 110.8, 0, 14);
+  fp.rotation.y = Math.PI / 2;
+  fp.rotation.x = -Math.PI / 2;
+  g.add(fp);
+
+  const rp = new THREE.Mesh(new THREE.PlaneGeometry(16, 5), pMat);
+  rp.position.set(o - 0.8, 0, 14);
+  rp.rotation.y = -Math.PI / 2;
+  rp.rotation.x = -Math.PI / 2;
+  g.add(rp);
+
+  return g;
+}
+
 let cars=[], sel=null;
 function carBox(c,x,y,th){ x=x===undefined?c.x:x; y=y===undefined?c.y:y; th=th===undefined?c.th:th; const cs=Math.cos(th), sn=Math.sin(th);
   return {cx:x+cs*33,cy:y+sn*33,ux:cs,uy:sn,hx:LEN/2-1,hy:WID/2-1}; }
@@ -1384,37 +1519,172 @@ function wheelBox(b){ return {cx:b.cx,cy:b.cy,ux:b.ux,uy:b.uy,hx:41,hy:b.hy}; }
 function corners(b){ const out=[]; [[1,1],[1,-1],[-1,-1],[-1,1]].forEach(s=>out.push([b.cx+b.ux*b.hx*s[0]-b.uy*b.hy*s[1], b.cy+b.uy*b.hx*s[0]+b.ux*b.hy*s[1]])); return out; }
 function overlap(a,b){ const A=corners(a),B=corners(b), axes=[[a.ux,a.uy],[-a.uy,a.ux],[b.ux,b.uy],[-b.uy,b.ux]];
   return axes.every(ax=>{ let a0=1e9,a1=-1e9,b0=1e9,b1=-1e9; A.forEach(p=>{const d=p[0]*ax[0]+p[1]*ax[1]; a0=Math.min(a0,d); a1=Math.max(a1,d);}); B.forEach(p=>{const d=p[0]*ax[0]+p[1]*ax[1]; b0=Math.min(b0,d); b1=Math.max(b1,d);}); return a1>b0&&b1>a0; }); }
+
 // Barrera de ENTRADA (carril del frente): el brazo cruza hacia +X.
 const ARML=XE1-(XC0-22)+1, ARM={cx:XC0-22+(6+ARML)/2,cy:BEY-16.5,ux:1,uy:0,hx:(ARML-6)/2,hy:2.5};
 // Barrera de SALIDA (carril lateral): el brazo cruza hacia +Y.
 const ARM2L=YL1-BARY+1, ARM2={cx:BSX+16.5,cy:BARY+(6+ARM2L)/2,ux:1,uy:0,hx:2.5,hy:(ARM2L-6)/2};
 let armAngle=0, armTarget=0, lastDetect=-1e9, arm2Angle=0, arm2Target=0, lastDetect2=-1e9;
+
 function blocked(c,x,y,th){ const b=carBox(c,x,y,th), P=corners(b);
   for(let e=0;e<4;e++){ const p=P[e],q=P[(e+1)%4], n=e%2?4:7; for(let k=0;k<n;k++){ const t=k/n; if(!inside(p[0]+(q[0]-p[0])*t,p[1]+(q[1]-p[1])*t)) return true; } }
   if(armAngle<1.05&&overlap(b,ARM)) return true;
   if(arm2Angle<1.05&&overlap(b,ARM2)) return true;
   const wb=wheelBox(b); if(OBS.some(o=>overlap(o.wheels?wb:b,o))) return true;
   return cars.some(o=>o!==c&&overlap(b,carBox(o))); }
+
 const hbMat=new THREE.LineBasicMaterial({color:col(1,.1,.6)}), hbGroup=new THREE.Group(); hbGroup.visible=false; root.add(hbGroup);
 function wire(w,d,h){ return new THREE.LineSegments(new THREE.EdgesGeometry(new THREE.BoxGeometry(w,d,h)),hbMat); }
 OBS.forEach(o=>{ const m=wire(o.hx*2,o.hy*2,o.h); m.position.set(o.cx,o.cy,8+o.h/2); hbGroup.add(m); });
 const armHb=wire(ARM.hx*2,ARM.hy*2,8); armHb.position.set(ARM.cx,ARM.cy,40); hbGroup.add(armHb);
 const arm2Hb=wire(ARM2.hx*2,ARM2.hy*2,8); arm2Hb.position.set(ARM2.cx,ARM2.cy,40); hbGroup.add(arm2Hb);
+
 function place(c){ c.g.position.set(c.x,c.y,8); c.g.rotation.z=c.th; }
-function addCar(pi,x,y,th){ const p=PALETTE[pi], c={pi,name:p[1],x,y,th,v:0,steer:0,g:buildCar(p[0])}; c.g.userData.car=c; c.hb=wire(LEN-2,WID-2,38); c.hb.position.set(33,0,24); c.hb.visible=hbGroup.visible; c.g.add(c.hb);
-  root.add(c.g); place(c); cars.push(c); return c; }
-function reset(){ cars.forEach(c=>root.remove(c.g)); cars=[]; armAngle=0; armTarget=0; lastDetect=-1e9; arm2Angle=0; arm2Target=0; lastDetect2=-1e9; passing=false; passing2=false; quiet=true;
-  addCar(0,153,yc(0),Math.PI); addCar(1,W-153,yc(3),0); sel=addCar(2,SPAWN[0],SPAWN[1],SPAWN[2]); renderCars(); aviso('');
-  $('log').innerHTML=''; logEvent('AVISO','Simulación iniciada'); }
-function aviso(t){ $('aviso').hidden=!t; $('aviso').textContent=t; }
-const cap=s=>s.charAt(0).toUpperCase()+s.slice(1);
-function renderCars(){ const el=$('cars'); el.innerHTML=''; cars.forEach(c=>{ const b=document.createElement('button'); b.className='car'; b.setAttribute('aria-pressed',c===sel);
-    const p=PALETTE[c.pi][0]; b.innerHTML='<i style="background:rgb('+p.map(v=>Math.round(v*255)).join(',')+')"></i>'+cap(c.name); b.onclick=()=>{ sel=c; renderCars(); }; el.appendChild(b); });
-  $('btnAdd').disabled=cars.length>=PALETTE.length; $('hud').innerHTML=sel?'Conduciendo el auto <b>'+sel.name+'</b>':'Elige un auto'; }
-$('btnAdd').onclick=()=>{ const used=cars.map(c=>c.pi), pi=PALETTE.findIndex((p,i)=>used.indexOf(i)<0); if(pi<0) return;
-  if(blocked({},SPAWN[0],SPAWN[1],SPAWN[2])){ aviso('Hay un auto en el punto de partida de la calle exterior. Muévelo y vuelve a intentar.'); return; }
-  aviso(''); sel=addCar(pi,SPAWN[0],SPAWN[1],SPAWN[2]); renderCars(); };
-$('btnReset').onclick=()=>reset();
+
+function addCar(pi,x,y,th,meta){
+  meta = meta || {};
+  const p = PALETTE[pi % PALETTE.length];
+  const plate = meta.plate || (meta.isRegistered === false ? generateRandomPlate() : 'PF-80-88');
+  const isRegistered = (meta.isRegistered !== undefined) ? meta.isRegistered : isPlateAuthorized(plate);
+  const driver = meta.driver || (isRegistered ? getPlateDriver(plate) : 'Auto de Prueba (Sin Reserva)');
+
+  const c = {
+    pi: pi % PALETTE.length,
+    name: p[1],
+    plate: plate,
+    driver: driver,
+    isRegistered: isRegistered,
+    x, y, th,
+    v: 0,
+    steer: 0,
+    g: buildCar(p[0], plate, isRegistered)
+  };
+  c.g.userData.car = c;
+  c.hb = wire(LEN-2, WID-2, 38);
+  c.hb.position.set(33, 0, 24);
+  c.hb.visible = hbGroup.visible;
+  c.g.add(c.hb);
+
+  root.add(c.g);
+  place(c);
+  cars.push(c);
+  return c;
+}
+
+function reset(){
+  cars.forEach(c => root.remove(c.g));
+  cars = [];
+  armAngle = 0; armTarget = 0; lastDetect = -1e9; arm2Angle = 0; arm2Target = 0; lastDetect2 = -1e9;
+  passing = false; passing2 = false; quiet = true;
+
+  // 1. Auto estacionado P1 (Registrado - Carlos Mella - LX-44-02)
+  addCar(0, 153, yc(0), Math.PI, { plate: 'LX-44-02', driver: 'Carlos Mella (E-04)', isRegistered: true });
+
+  // 2. Auto estacionado P4 (Registrado - Valentina Soto - KJ-89-21)
+  addCar(1, W - 153, yc(3), 0, { plate: 'KJ-89-21', driver: 'Valentina Soto (E-02)', isRegistered: true });
+
+  // 3. Auto activo en calle (Registrado - Paul Ferrada - PF-80-88) -> ¡ABRE LA BARRERA!
+  sel = addCar(2, 60, -ROAD/2, 0, { plate: 'PF-80-88', driver: 'Paul Ferrada (iotAURA)', isRegistered: true });
+
+  // 4. Auto de prueba 1 (NO REGISTRADO - Patente Random) -> ¡BARRERA SE BLOQUEA!
+  addCar(4, -80, -ROAD/2, 0, { plate: 'XX-99-ZZ', driver: 'Auto Prueba 1 (No Registrado)', isRegistered: false });
+
+  // 5. Auto de prueba 2 (NO REGISTRADO - Patente Random) -> ¡BARRERA SE BLOQUEA!
+  addCar(5, -210, -ROAD/2, 0, { plate: 'NR-40-40', driver: 'Auto Prueba 2 (No Registrado)', isRegistered: false });
+
+  updateAlprChips();
+  renderCars();
+  aviso('');
+  $('log').innerHTML = '';
+  logEvent('AVISO', 'Simulador 3D iniciado · Sistema ALPR de control de acceso activo');
+}
+
+function aviso(t){ $('aviso').hidden = !t; $('aviso').textContent = t; }
+const cap = s => s.charAt(0).toUpperCase() + s.slice(1);
+
+function updateHudAndBanner(){
+  if (sel) {
+    const isReg = isPlateAuthorized(sel.plate);
+    sel.isRegistered = isReg;
+    $('hud').innerHTML = `Conduciendo: <b>${cap(sel.name)}</b> · Patente: <b style="color:${isReg ? '#10b981':'#ef4444'}">[${sel.plate}]</b> (${isReg ? '✓ AUTORIZADA' : '⛔ NO REGISTRADA'}) · ${sel.driver}`;
+    
+    const tipEl = document.getElementById('driveTip');
+    if (tipEl) {
+      if (isReg) {
+        tipEl.innerHTML = `<span>🟢 Conduces <b>${sel.plate}</b> (✓ REGISTRADA): El sensor abrirá la barrera automáticamente</span>`;
+        tipEl.style.borderColor = 'rgba(16, 185, 129, 0.6)';
+      } else {
+        tipEl.innerHTML = `<span>🔴 Conduces <b>${sel.plate}</b> (⛔ NO REGISTRADA): La barrera se bloqueará por no tener reserva</span>`;
+        tipEl.style.borderColor = 'rgba(239, 68, 68, 0.6)';
+      }
+    }
+  } else {
+    $('hud').innerHTML = 'Elige un auto para conducir';
+  }
+}
+
+function renderCars(){
+  const el = $('cars');
+  el.innerHTML = '';
+  cars.forEach(c => {
+    const b = document.createElement('div');
+    b.className = 'car-card';
+    b.setAttribute('aria-pressed', c === sel);
+    const p = PALETTE[c.pi % PALETTE.length][0];
+    const isReg = isPlateAuthorized(c.plate);
+    c.isRegistered = isReg;
+    const badgeCls = isReg ? 'plate-tag reg' : 'plate-tag unreg';
+    const badgeText = isReg ? `✓ ${c.plate}` : `✕ ${c.plate}`;
+    
+    b.innerHTML = `
+      <div class="car-card-main">
+        <i class="car-card-color" style="background:rgb(${p.map(v=>Math.round(v*255)).join(',')})"></i>
+        <div class="car-card-text">
+          <span class="car-card-title">${cap(c.name)} · <b>${c.plate}</b></span>
+          <span class="car-card-driver">${c.driver}</span>
+        </div>
+      </div>
+      <span class="${badgeCls}">${badgeText}</span>
+    `;
+    b.onclick = () => {
+      sel = c;
+      renderCars();
+    };
+    el.appendChild(b);
+  });
+
+  updateHudAndBanner();
+}
+
+window.teleportActiveCar = function(){
+  if(!sel) return;
+  sel.x = 60;
+  sel.y = -ROAD/2;
+  sel.th = 0;
+  sel.v = 0;
+  sel.steer = 0;
+  place(sel);
+  toast('in', 'Auto Reubicado', `${sel.plate} listo en la recta de entrada`);
+};
+
+window.spawnRandomTestCar = function(){
+  const randPlate = generateRandomPlate();
+  const used = cars.map(c => c.pi);
+  let pi = PALETTE.findIndex((p, i) => used.indexOf(i) < 0);
+  if(pi < 0) pi = cars.length % PALETTE.length;
+  
+  const posX = -70 - (cars.length * 65);
+  const newCar = addCar(pi, posX, -ROAD/2, 0, {
+    plate: randPlate,
+    driver: `Auto Prueba (Sin Reserva)`,
+    isRegistered: false
+  });
+  
+  sel = newCar;
+  renderCars();
+  toast('out', 'Auto No Registrado Creado', `Patente: ${randPlate} · ¡Conduce a la barrera para probar el bloqueo!`);
+};
+
 const marker=new THREE.Mesh(new THREE.ConeGeometry(7,14,4),new THREE.MeshBasicMaterial({color:col(.95,.45,.1)})); marker.rotation.x=-Math.PI/2; root.add(marker);
 
 // ---------- Pantalla de monitoreo: registro y avisos ----------
@@ -1436,6 +1706,19 @@ function measure(s){ let best=Infinity; const boxes=cars.map(c=>carBox(c));
   [[0,-12],[0,-6],[0,0],[0,6],[0,12],[-13,0],[13,0]].forEach(r=>{ const a=s.a+r[1]*Math.PI/180, dx=Math.cos(a), dy=Math.sin(a), ox=s.x-Math.sin(s.a)*r[0], oy=s.y+Math.cos(s.a)*r[0];
     boxes.forEach(b=>{ const t=rayBox(ox,oy,dx,dy,b); if(t<best) best=t; }); });
   return best>RANGE?Infinity:best; }
+
+function getCarAtSensor(s){
+  let best=Infinity, bestCar=null;
+  const boxes=cars.map(c=>carBox(c));
+  [[0,-12],[0,-6],[0,0],[0,6],[0,12],[-13,0],[13,0]].forEach(r=>{
+    const a=s.a+r[1]*Math.PI/180, dx=Math.cos(a), dy=Math.sin(a), ox=s.x-Math.sin(s.a)*r[0], oy=s.y+Math.cos(s.a)*r[0];
+    boxes.forEach((b,idx)=>{
+      const t=rayBox(ox,oy,dx,dy,b);
+      if(t<best){ best=t; bestCar=cars[idx]; }
+    });
+  });
+  return best<=s.th+25?bestCar:null;
+}
 const hazMat=new THREE.MeshBasicMaterial({color:col(1,.72,.1),transparent:true,opacity:.24,depthWrite:false,side:THREE.DoubleSide});
 const unitCone=new THREE.CylinderGeometry(Math.tan(Math.PI/12),.04,1,36,1,true); unitCone.rotateZ(-Math.PI/2); unitCone.translate(.5,0,0);
 const LM={gOn:[.1,1,.25,1],gOff:[.02,.2,.05,0],rOn:[1,.08,.08,1],rOff:[.25,.02,.02,0]};
@@ -1463,9 +1746,25 @@ const lcdCv=document.createElement('canvas'); lcdCv.width=645; lcdCv.height=145;
 const lcdMesh=new THREE.Mesh(new THREE.PlaneGeometry(64.5,14.5),new THREE.MeshBasicMaterial({map:lcdTx,transparent:true})); lcdMesh.rotation.x=Math.PI/2; lcdMesh.position.set(LCDX,LCDY-1.5,76); root.add(lcdMesh);
 const cm=d=>(d/10).toFixed(1).replace('.',',')+' cm';
 let lastLib=-1, uiClock=0, quiet=true, wasOpen=false, wasEnt=false, wasSal=false, wasOpen2=false, passing=false, passing2=false, inCount=0;
-function drawLcd(lib){ $('lcd1').textContent='LIBRES: '+lib; $('lcd2').textContent='OCUPADOS: '+(6-lib);
-  const x=lcdCv.getContext('2d'); x.clearRect(0,0,645,145); x.fillStyle='#fff'; x.font='600 50px "IBM Plex Mono",monospace'; x.textAlign='center'; x.textBaseline='middle';
-  x.fillText('LIBRES: '+lib,322,40); x.fillText('OCUPADOS: '+(6-lib),322,105); lcdTx.needsUpdate=true; }
+let lastDeniedTime = 0;
+
+function drawLcd(lib, approachingPlate, isAuth){
+  $('lcd1').textContent='LIBRES: '+lib; $('lcd2').textContent='OCUPADOS: '+(6-lib);
+  const x=lcdCv.getContext('2d'); x.clearRect(0,0,645,145);
+  x.font='600 48px "IBM Plex Mono",monospace'; x.textAlign='center'; x.textBaseline='middle';
+  if(approachingPlate){
+    x.fillStyle = isAuth ? '#34d399' : '#f87171';
+    x.fillText(isAuth ? 'PASE: '+approachingPlate : 'DENEGADO: '+approachingPlate, 322, 40);
+    x.fillStyle = '#fff';
+    x.fillText(isAuth ? 'LIBRES: '+lib : 'SIN RESERVA', 322, 105);
+  } else {
+    x.fillStyle='#fff';
+    x.fillText('LIBRES: '+lib, 322, 40);
+    x.fillText('OCUPADOS: '+(6-lib), 322, 105);
+  }
+  lcdTx.needsUpdate=true;
+}
+
 function sense(now,dt){
   sensors.forEach((s,i)=>{ s.d=measure(s); const on=s.on?s.d<s.th+15:s.d<s.th;
     if(on!==s.on){ s.on=on; s.since=now; if(!quiet&&i<6){ logEvent('PLAZA',s.name+(on?' ocupada':' liberada')); if(window.on3DSlotChange) window.on3DSlotChange(i, on); } }
@@ -1473,24 +1772,63 @@ function sense(now,dt){
     if(s.green){ s.green.forEach(m=>m.material=s.on?LM.gOff:LM.gOn); s.red.forEach(m=>m.material=s.on?LM.rOn:LM.rOff); } });
   const lib=6-sensors.slice(0,6).filter(s=>s.on).length, ent=sensors[6], sal=sensors[7];
   if(quiet) inCount=6-lib;
-  if(lib!==lastLib){ if(!quiet&&lib===0) logEvent('AVISO','Estacionamiento lleno'); lastLib=lib; drawLcd(lib); }
-  // Lógica de la barrera de entrada (Barrera 1 · Sensor ultrasónico + Firebase / Web Serial Pin 10):
-  if (ent.on && lib > 0) {
-    armTarget = Math.PI / 2;
-    lastDetect = now;
+  
+  const carAtEnt = ent.on ? getCarAtSensor(ent) : null;
+  const carAuth = carAtEnt ? isPlateAuthorized(carAtEnt.plate) : false;
+
+  if(lib!==lastLib || ent.on!==wasEnt){
+    if(!quiet&&lib===0&&lib!==lastLib) logEvent('AVISO','Estacionamiento lleno');
+    lastLib=lib;
+    drawLcd(lib, carAtEnt ? carAtEnt.plate : null, carAuth);
+  }
+
+  // Lógica de la barrera de entrada con ALPR (Solo autos registrados abren la barrera):
+  if (ent.on) {
+    if (carAtEnt && carAuth) {
+      if (lib > 0) {
+        armTarget = Math.PI / 2;
+        lastDetect = now;
+        if (!wasOpen && !quiet) {
+          logEvent('ACCESO', `✅ AUTORIZADO: Patente ${carAtEnt.plate} (${carAtEnt.driver})`);
+          toast('in', 'Acceso Autorizado', `Patente ${carAtEnt.plate} verificada · Bienvenido`);
+          if (window.on3DBarrierSensorTrigger) {
+            window.on3DBarrierSensorTrigger('entry', 'open', carAtEnt.plate, carAtEnt.driver);
+          }
+        }
+      } else {
+        armTarget = 0;
+        if (!quiet && now - lastDeniedTime > 3000) {
+          lastDeniedTime = now;
+          logEvent('AVISO', `Estacionamiento lleno · Patente ${carAtEnt.plate} en espera`);
+          toast('out', 'Estacionamiento Lleno', 'No hay plazas libres disponibles');
+        }
+      }
+    } else if (carAtEnt && !carAuth) {
+      // AUTO CON PATENTE NO REGISTRADA: LA BARRERA NO SE ABRE
+      armTarget = 0;
+      if (!quiet && now - lastDeniedTime > 3000) {
+        lastDeniedTime = now;
+        logEvent('DENEGADO', `⛔ ACCESO DENEGADO: Patente ${carAtEnt.plate} NO registrada en reservas`);
+        toast('out', 'Acceso Denegado', `Patente ${carAtEnt.plate} no registrada en la web · Barrera bloqueada`);
+        if (window.on3DBarrierSensorDenied) {
+          window.on3DBarrierSensorDenied('entry', carAtEnt.plate);
+        }
+      }
+    }
   } else if (window._remoteBarrierEntry === true) {
     armTarget = Math.PI / 2;
   } else if (now - lastDetect > 2200 && !cars.some(c => overlap(carBox(c), ARM))) {
     armTarget = 0;
+    if (wasOpen && window.on3DBarrierSensorTrigger && !window._remoteBarrierEntry) {
+      window.on3DBarrierSensorTrigger('entry', 'closed');
+    }
   }
+
   const open = armTarget > 0;
   if (open !== wasOpen) {
     wasOpen = open;
     if (!quiet) {
       logEvent('BARRERA', open ? 'Barrera 1 (Entrada) abierta' : 'Barrera 1 (Entrada) cerrada');
-      if (window.on3DBarrierSensorTrigger) {
-        window.on3DBarrierSensorTrigger('entry', open ? 'open' : 'closed');
-      }
     }
   }
 
@@ -1514,7 +1852,6 @@ function sense(now,dt){
     }
   }
   if(sal.on&&open2) passing2=true;
-  // Conteo como lo haría el ESP32: una entrada cuando el auto deja el sensor de entrada tras abrirse la barrera; una salida cuando deja el sensor de salida.
   if(ent.on&&open) passing=true;
   if(ent.on!==wasEnt){ wasEnt=ent.on; if(!quiet){
     if(ent.on&&lib===0) logEvent('AVISO','Auto en la entrada sin plazas libres');
@@ -1527,11 +1864,29 @@ function sense(now,dt){
   $('clock').textContent=hhmmss(); $('nLib').textContent=lib; $('nOcc').textContent=6-lib; $('nIn').textContent=inCount; $('full').hidden=lib>0;
   sensors.slice(0,6).forEach(s=>{ s.ui.t.className='tile'+(s.on?' on':''); s.ui.seg.className=s.on?'on':''; s.ui.st.textContent=s.on?'OCUPADA':'LIBRE';
     s.ui.d.textContent=isFinite(s.d)?cm(s.d):'sin eco'; s.ui.tm.textContent=fmtT(now-s.since); });
-  $('entSt').textContent=ent.on?'Auto detectado':'Carril vacío'; $('entD').textContent=isFinite(ent.d)?cm(ent.d):'sin eco'; $('accEnt').className=ent.on?'hot':'';
+  
+  if (ent.on) {
+    if (carAtEnt) {
+      if (carAuth) {
+        $('entSt').textContent = `✅ ${carAtEnt.plate} (OK)`;
+        $('barWhy').textContent = `Autorizado: ${carAtEnt.plate}`;
+      } else {
+        $('entSt').textContent = `⛔ ${carAtEnt.plate} (DENEGADO)`;
+        $('barWhy').textContent = `No registrada: ${carAtEnt.plate}`;
+      }
+    } else {
+      $('entSt').textContent = 'Auto detectado';
+      $('barWhy').textContent = open ? 'Pase autorizado' : 'Verificando patente...';
+    }
+  } else {
+    $('entSt').textContent = 'Carril vacío';
+    $('barWhy').textContent = open ? 'Auto pasando' : 'Esperando un auto';
+  }
+
   $('salSt').textContent=sal.on?'Auto detectado':'Salida libre'; $('salD').textContent=isFinite(sal.d)?cm(sal.d):'sin eco'; $('accSal').className=sal.on?'hot':'';
   $('barSt').textContent=open?'ABIERTA':'CERRADA'; $('accBar').className=open?'hot':'';
   $('bar2St').textContent=open2?'ABIERTA':'CERRADA'; $('accBar2').className=open2?'hot':''; $('bar2Why').textContent=open2?(sal.on?'Auto pasando':'Cierra en 2 s'):'Esperando un auto';
-  $('barWhy').textContent=open?(ent.on?'Auto pasando':'Cierra en 2 s'):ent.on?'Sin plazas libres':'Esperando un auto'; }
+}
 
 // ---------- Conducción ----------
 const keys={up:false,down:false,left:false,right:false,brake:false};
@@ -1628,7 +1983,14 @@ window.smartParking={
       const used = cars.map(c => c.pi);
       let pi = PALETTE.findIndex((p, idx) => used.indexOf(idx) < 0);
       if(pi < 0) pi = (slotIndex % PALETTE.length);
-      addCar(pi, targetX, targetY, targetTh);
+      const slotNum = slotIndex + 1;
+      const defaultPlates = ['LX-44-02', 'KJ-89-21', 'PR-77-31', 'PF-80-88', 'FM-20-26', 'FL-12-34'];
+      const slotPlate = defaultPlates[slotIndex] || generateRandomPlate();
+      addCar(pi, targetX, targetY, targetTh, {
+        plate: slotPlate,
+        driver: `Cupo E-0${slotNum}`,
+        isRegistered: true
+      });
       renderCars();
     } else if(!occupied && existingIndex >= 0){
       const carToRemove = cars[existingIndex];
@@ -1670,6 +2032,7 @@ import {
   collection, 
   onSnapshot, 
   setDoc, 
+  addDoc,
   serverTimestamp 
 } from "https://www.gstatic.com/firebasejs/10.8.0/firebase-firestore.js";
 
@@ -1783,6 +2146,9 @@ try {
         if (window.smartParking && window.smartParking.setSlotOccupied) {
           window.smartParking.setSlotOccupied(slotId - 1, isOcc);
         }
+        if (slotData.vehiclePlate && (slotData.status === 'reserved' || slotData.status === 'occupied')) {
+          window.registerAuthorizedPlate(slotData.vehiclePlate, slotData.driverName || `Cupo E-0${slotId}`);
+        }
       }
     });
     setTimeout(() => { isSyncingFromRemote = false; }, 400);
@@ -1793,7 +2159,38 @@ try {
   console.warn("[3D Firebase] Excepción al escuchar slots:", e);
 }
 
+// 2b. Escuchar colección de reservas activas en Firestore
+try {
+  const reservationsCol = collection(db, "reservations");
+  onSnapshot(reservationsCol, (snap) => {
+    snap.forEach((docItem) => {
+      const res = docItem.data();
+      if (res.vehiclePlate && res.status !== 'cancelled') {
+        window.registerAuthorizedPlate(res.vehiclePlate, res.driverName || 'Reserva Web');
+      }
+    });
+  }, (err) => {
+    console.warn("[3D Firebase] Error reservations:", err.message);
+  });
+} catch (e) {
+  console.warn("[3D Firebase] Excepción al escuchar reservations:", e);
+}
+
 // 3. Funciones globales expuestas para los botones del HUD
+window.registerAuthorizedPlate = function(plate, driver) {
+  const clean = cleanPlate(plate);
+  if (!clean) return;
+  authMap.set(clean, driver || 'Reserva Web');
+  updateAlprChips();
+  cars.forEach(c => {
+    if (cleanPlate(c.plate) === clean) {
+      c.isRegistered = true;
+      if (driver) c.driver = driver;
+    }
+  });
+  renderCars();
+};
+
 window.setBarrier3D = async function(gate, status) {
   try {
     const angle = (status === 'open' ? 90 : 0);
@@ -1813,7 +2210,7 @@ window.setBarrier3D = async function(gate, status) {
 };
 
 let lastSensorSyncTime = { entry: 0, exit: 0 };
-window.on3DBarrierSensorTrigger = function(gate, status) {
+window.on3DBarrierSensorTrigger = function(gate, status, plate, driver) {
   const now = Date.now();
   if (now - (lastSensorSyncTime[gate] || 0) < 1200) return;
   if (currentBarrierState[gate] === status) return;
@@ -1827,10 +2224,40 @@ window.on3DBarrierSensorTrigger = function(gate, status) {
       status,
       angle: (status === 'open' ? 90 : 0),
       source: 'sensor_3d',
+      plate: plate || null,
+      driver: driver || null,
       lastAction: new Date().toISOString()
     },
     updatedAt: serverTimestamp()
   }, { merge: true }).catch(console.warn);
+
+  if (status === 'open' && plate) {
+    try {
+      const logsCol = collection(db, "audit_logs");
+      addDoc(logsCol, {
+        component: "Sensor Entrada 3D / ALPR",
+        action: "ACCESS_GRANTED",
+        details: `Acceso concedido a vehículo [${plate}] (${driver || 'Registrado'}). Barrera 1 abierta.`,
+        type: "success",
+        timestamp: serverTimestamp()
+      }).catch(console.warn);
+    } catch(e) {}
+  }
+};
+
+window.on3DBarrierSensorDenied = function(gate, plate) {
+  try {
+    const logsCol = collection(db, "audit_logs");
+    addDoc(logsCol, {
+      component: "Sensor Entrada 3D / ALPR",
+      action: "ACCESS_DENIED",
+      details: `Intento de acceso denegado a vehículo [${plate}]: patente sin reserva activa en la web. Barrera bloqueada.`,
+      type: "warning",
+      timestamp: serverTimestamp()
+    }).catch(console.warn);
+  } catch (e) {
+    console.warn("[3D Firebase] Error log denegado:", e);
+  }
 };
 
 window.toggleBarrier3D = function(gate) {
