@@ -1,0 +1,30 @@
+# Dependencias
+node_modules/
+
+# Compilación de producción (generado por npm run build)
+dist/
+
+# Logs del sistema
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Variables de entorno
+.env
+.env.local
+.env.*.local
+
+# IDEs y editores
+.vscode/
+.idea/
+*.suo
+*.ntvs*
+*.njsproj
+
+# Archivos del sistema operativo
+.DS_Store
+Thumbs.db
+
+# Paquete de despliegue Azure
+DESPLIEGUE_AZURE_AURA*
+

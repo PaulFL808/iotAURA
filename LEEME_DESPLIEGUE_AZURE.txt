@@ -1,0 +1,73 @@
+=============================================================================
+  GUÍA RÁPIDA DE DESPLIEGUE: AURA SMART PARKING EN MICROSOFT AZURE
+  Windows Server 2022 Datacenter + IIS 10.0 + Node.js Express + Firestore
+=============================================================================
+
+Esta carpeta contiene ÚNICAMENTE los archivos de producción requeridos para
+publicar la aplicación en tu Máquina Virtual de Microsoft Azure.
+
+-----------------------------------------------------------------------------
+1. CONTENIDO DE ESTA CARPETA
+-----------------------------------------------------------------------------
+- /dist                  -> Frontend compilado listo para producción (React 18 + Tailwind).
+- /server                -> Backend Express con endpoints de API REST (CRUD) y servicio estático.
+- package.json           -> Dependencias mínimas de producción (express, cors).
+- .env                   -> Credenciales de Firebase Firestore vinculadas al proyecto 'nubarda'.
+- web.config             -> Configuración para IIS (Proxy Inverso con Application Request Routing).
+- iniciar_servidor_azure.bat -> Script de un clic para iniciar el servidor en Windows Server.
+
+-----------------------------------------------------------------------------
+2. PASOS PARA DESPLEGAR EN LA MÁQUINA VIRTUAL DE AZURE
+-----------------------------------------------------------------------------
+
+PASO A: TRANSFERIR LOS ARCHIVOS A LA VM DE AZURE
+  1. Conéctate a tu Máquina Virtual de Azure mediante Escritorio Remoto (RDP).
+  2. En tu PC local, copia esta carpeta o el archivo 'DESPLIEGUE_AZURE_AURA.zip'.
+  3. Dentro del Escritorio Remoto de la VM, pégalo en una ruta como:
+     C:\aurasmartparking  o  C:\inetpub\wwwroot\aurasmartparking
+
+PASO B: INSTALAR NODE.JS EN LA MÁQUINA VIRTUAL (Si no está instalado)
+  1. Abre el navegador dentro de Windows Server (Edge).
+  2. Descarga e instala Node.js LTS (versión 20 o 22) desde: https://nodejs.org
+  3. Durante la instalación, marca la casilla de agregar a PATH.
+
+PASO C: INICIAR LA APLICACIÓN
+  1. Abre la carpeta 'DESPLIEGUE_AZURE_AURA' en la VM.
+  2. Haz doble clic en el archivo:
+     iniciar_servidor_azure.bat
+  3. El script instalará automáticamente las dependencias ligeras (express y cors)
+     y levantará el servidor en http://localhost:3001.
+
+PASO D: CONFIGURACIÓN EN IIS (OPCIONAL / SEGÚN RÚBRICA)
+  Si vas a exponerlo a través del puerto 80 con IIS mediante Proxy Inverso:
+  1. En Server Manager, asegúrate de que el rol 'Web Server (IIS)' esté instalado.
+  2. Instala los módulos gratuitos de Microsoft:
+     - URL Rewrite: https://www.iis.net/downloads/microsoft/url-rewrite
+     - Application Request Routing (ARR 3.0): https://www.iis.net/downloads/microsoft/application-request-routing
+  3. En IIS Manager, haz clic en el servidor -> 'Application Request Routing Cache' ->
+     'Server Proxy Settings' -> Marca 'Enable proxy' y haz clic en Apply.
+  4. En el Default Web Site de IIS, apunta la ruta física a esta carpeta donde está el 'web.config'.
+  5. ¡Listo! Todo el tráfico que llegue al puerto 80 será redirigido internamente al puerto 3001.
+
+-----------------------------------------------------------------------------
+3. REGLAS DEL GRUPO DE SEGURIDAD DE RED (NSG) EN EL PORTAL DE AZURE
+-----------------------------------------------------------------------------
+En el Portal de Azure (portal.azure.com), en tu Máquina Virtual -> 'Redes' (Networking):
+Asegúrate de tener creadas las siguientes reglas de puerto de entrada (Inbound security rules):
+
+  - Puerto 80   (HTTP)  -> Para acceder por el navegador web público.
+  - Puerto 443  (HTTPS) -> Para conexiones cifradas SSL.
+  - Puerto 3001 (TCP)   -> Para acceso directo a la API REST de Node.js.
+  - Puerto 3389 (RDP)   -> Para administrar la máquina por Escritorio Remoto.
+
+-----------------------------------------------------------------------------
+4. COMPROBACIÓN EXTERNA
+-----------------------------------------------------------------------------
+Desde cualquier computador externo, celular o navegador, accede a:
+  http://<TU_IP_PUBLICA_AZURE>  o  http://<TU_IP_PUBLICA_AZURE>:3001
+  o mediante tu dominio Azure DNS:
+  http://aurasmartparking.eastus.cloudapp.azure.com
+
+¡La aplicación cargará el mapa interactivo, el terminal de reservas y el CRUD
+sincronizado en tiempo real con Firebase Firestore!
+=============================================================================

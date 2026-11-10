@@ -1,0 +1,130 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-primary: #f0f1f4;
+    --bg-card: #ffffff;
+    --border-bold: #d1d5db;
+    --text-primary: #111827;
+  }
+
+  .dark {
+    --bg-primary: #090a0f;
+    --bg-card: #13141a;
+    --border-bold: #2d3139;
+    --text-primary: #f9fafb;
+  }
+
+  body {
+    background-color: var(--bg-primary);
+    color: var(--text-primary);
+    font-family: 'Space Grotesk', -apple-system, sans-serif;
+    font-size: 16px;
+    letter-spacing: -0.01em;
+    -webkit-font-smoothing: antialiased;
+  }
+
+  h1, h2, h3, h4, .font-display {
+    font-family: 'Unbounded', sans-serif;
+    letter-spacing: -0.02em;
+  }
+}
+
+/* Chunky, tactile game-like card */
+.game-card {
+  background-color: var(--bg-card);
+  border: 2px solid var(--border-bold);
+  border-radius: 20px;
+  box-shadow: 0 8px 24px -6px rgba(0, 0, 0, 0.06);
+  transition: all 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.game-card:hover {
+  transform: translateY(-2px);
+  border-color: #9ca3af;
+  box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.12);
+}
+
+.dark .game-card:hover {
+  border-color: #4b5563;
+  box-shadow: 0 16px 32px -8px rgba(0, 0, 0, 0.6);
+}
+
+/* Tactile push button */
+.btn-game-primary {
+  font-family: 'Unbounded', sans-serif;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  padding: 0.85rem 1.6rem;
+  border-radius: 16px;
+  background-color: #111827;
+  color: #ffffff;
+  border: 2px solid #000000;
+  box-shadow: 0 4px 0px 0px #000000;
+  transition: all 0.1s ease;
+}
+
+.dark .btn-game-primary {
+  background-color: #ffffff;
+  color: #111827;
+  border-color: #e5e7eb;
+  box-shadow: 0 4px 0px 0px #9ca3af;
+}
+
+.btn-game-primary:hover {
+  transform: translateY(-1px);
+  box-shadow: 0 5px 0px 0px #000000;
+}
+
+.btn-game-primary:active {
+  transform: translateY(3px);
+  box-shadow: 0 1px 0px 0px #000000;
+}
+
+/* Parking bay painted line styling */
+.parking-bay-lines {
+  background-image: 
+    linear-gradient(to right, rgba(255,255,255,0.08) 1px, transparent 1px),
+    linear-gradient(to bottom, rgba(255,255,255,0.08) 1px, transparent 1px);
+  background-size: 24px 24px;
+}
+
+/* Road asphalt texture */
+.road-texture {
+  background-color: #1e2024;
+  background-image: radial-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 0);
+  background-size: 16px 16px;
+}
+
+/* Big readable status pill */
+.pill-status-large {
+  font-family: 'Unbounded', sans-serif;
+  font-weight: 700;
+  font-size: 0.85rem;
+  padding: 0.45rem 1rem;
+  border-radius: 12px;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  letter-spacing: 0.02em;
+}
+
+/* Car drive-in animation */
+@keyframes carDriveIn {
+  0% { transform: translateY(30px) scale(0.9); opacity: 0; }
+  60% { transform: translateY(-4px) scale(1.02); opacity: 1; }
+  100% { transform: translateY(0) scale(1); opacity: 1; }
+}
+
+.animate-car-in {
+  animation: carDriveIn 0.45s cubic-bezier(0.18, 0.89, 0.32, 1.28) forwards;
+}
+
+/* Barrier arm rotating animation */
+.barrier-arm {
+  transform-origin: 10px 50%;
+  transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+}
