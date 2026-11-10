@@ -14,13 +14,29 @@ class ArduinoSerialService {
       status: [],
       telemetry: [],
       barrierEvent: [],
+      barrierStatus: [],
       rawLog: []
     };
     this.lineBuffer = '';
+    this.initUsbListeners();
   }
 
   isSupported() {
     return 'serial' in navigator;
+  }
+
+  initUsbListeners() {
+    if (this.isSupported()) {
+      navigator.serial.addEventListener('connect', (e) => {
+        this.emit('rawLog', { type: 'system', text: 'Dispositivo USB serie detectado en el equipo.' });
+      });
+      navigator.serial.addEventListener('disconnect', (e) => {
+        if (this.port && e.target === this.port) {
+          this.emit('rawLog', { type: 'warning', text: 'Dispositivo Arduino desconectado físicamente del puerto USB.' });
+          this.disconnect();
+        }
+      });
+    }
   }
 
   on(event, callback) {
@@ -46,24 +62,35 @@ class ArduinoSerialService {
 
   async connect(baudRate = 9600) {
     if (!this.isSupported()) {
-      throw new Error('Tu navegador no soporta Web Serial API. Usa Google Chrome o Microsoft Edge.');
+      const err = new Error('Tu navegador no soporta Web Serial API. Por favor usa Google Chrome o Microsoft Edge en PC.');
+      this.emit('status', { connected: false, error: err.message });
+      throw err;
     }
 
     try {
-      // Solicitar al usuario que elija el puerto serie del Arduino (ej. COM3, COM4, /dev/ttyACM0)
+      // Solicita al usuario elegir el puerto serie (COM) usando navigator.serial.requestPort()
       this.port = await navigator.serial.requestPort();
       await this.port.open({ baudRate });
       this.isConnected = true;
       this.emit('status', { connected: true, baudRate });
-      this.emit('rawLog', { type: 'system', text: `Conectado a puerto serial a ${baudRate} baudios.` });
+      this.emit('rawLog', { type: 'system', text: `Conexión establecida a ${baudRate} baudios. Listo para enviar 'T' y recibir estados.` });
 
-      // Iniciar el bucle de lectura continua
+      // Iniciar el bucle de lectura continua mediante ReadableStream
       this.startReading();
       return true;
     } catch (err) {
       this.isConnected = false;
-      this.emit('status', { connected: false, error: err.message });
-      throw err;
+      let friendlyMessage = err.message;
+      if (err.name === 'NotFoundError') {
+        friendlyMessage = 'Selección de puerto COM cancelada por el usuario.';
+      } else if (err.name === 'SecurityError') {
+        friendlyMessage = 'Permiso denegado para acceder al puerto USB serie.';
+      } else if (err.name === 'InvalidStateError') {
+        friendlyMessage = 'El puerto serie ya está en uso por otra ventana o aplicación.';
+      }
+      this.emit('status', { connected: false, error: friendlyMessage });
+      this.emit('rawLog', { type: 'error', text: friendlyMessage });
+      throw new Error(friendlyMessage);
     }
   }
 
@@ -103,7 +130,17 @@ class ArduinoSerialService {
 
       this.emit('rawLog', { type: 'rx', text: line, time: new Date().toLocaleTimeString('es-CL') });
 
-      // Intentar parsear JSON enviado por Arduino
+      // Escuchar específicamente los textos del sketch Arduino:
+      // "ESTADO: ABIERTA" o "ESTADO: CERRADA"
+      if (line.includes('ESTADO: ABIERTA') || line.includes('ENTRY_OPENED') || line === 'ABIERTA') {
+        this.emit('barrierStatus', { status: 'open', gate: 'entry', rawText: line });
+        this.emit('barrierEvent', 'BARRIER_ENTRY_OPEN', { status: 'open', rawText: line });
+      } else if (line.includes('ESTADO: CERRADA') || line.includes('ENTRY_CLOSED') || line === 'CERRADA') {
+        this.emit('barrierStatus', { status: 'closed', gate: 'entry', rawText: line });
+        this.emit('barrierEvent', 'BARRIER_ENTRY_CLOSED', { status: 'closed', rawText: line });
+      }
+
+      // Intentar parsear JSON enviado por Arduino si existiera
       if (line.startsWith('{') && line.endsWith('}')) {
         try {
           const data = JSON.parse(line);
@@ -113,10 +150,42 @@ class ArduinoSerialService {
             this.emit('barrierEvent', data.event, data);
           }
         } catch (e) {
-          // No es JSON válido, ignorar o procesar como texto
+          // No es JSON válido
         }
       }
     }
+  }
+
+  /**
+   * Escribe el carácter 'T' en el puerto serie hacia el Arduino para alternar la barrera
+   */
+  async writeChar(char = 'T') {
+    if (!this.port || !this.port.writable) {
+      this.emit('rawLog', { type: 'warning', text: `No hay conexión serie activa para enviar '${char}'` });
+      return false;
+    }
+
+    try {
+      const encoder = new TextEncoder();
+      const writer = this.port.writable.getWriter();
+      await writer.write(encoder.encode(char));
+      writer.releaseLock();
+
+      this.emit('rawLog', { 
+        type: 'tx', 
+        text: `Carácter '${char}' enviado al Arduino UNO (Toggle Barrera)`, 
+        time: new Date().toLocaleTimeString('es-CL') 
+      });
+      return true;
+    } catch (err) {
+      this.emit('rawLog', { type: 'error', text: `Error al enviar carácter '${char}': ${err.message}` });
+      return false;
+    }
+  }
+
+  // Alterna la barrera enviando 'T'
+  async toggleBarrier() {
+    return this.writeChar('T');
   }
 
   async sendCommand(command) {
@@ -140,13 +209,13 @@ class ArduinoSerialService {
     }
   }
 
-  // Comandos directos de barreras
+  // Comandos de compatibilidad
   async openEntry() {
-    return this.sendCommand('OPEN_ENTRY');
+    return this.writeChar('T');
   }
 
   async closeEntry() {
-    return this.sendCommand('CLOSE_ENTRY');
+    return this.writeChar('T');
   }
 
   async openExit() {

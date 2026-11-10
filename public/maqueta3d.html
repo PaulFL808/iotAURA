@@ -98,6 +98,8 @@ kbd{font:600 10.5px var(--mono);border:1px solid var(--line);border-bottom-width
 .toast span{font-size:12px;color:var(--scr-muted)}
 @keyframes in{from{opacity:0;transform:translateY(-8px)}to{opacity:1;transform:none}}
 @media (prefers-reduced-motion:reduce){.toast{animation:none}}
+.drive-tip{position:absolute;top:14px;left:50%;transform:translateX(-50%);background:rgba(15,23,42,0.92);border:1px solid rgba(59,130,246,0.45);backdrop-filter:blur(8px);color:#f8fafc;font:500 12px var(--sans);padding:7px 16px;border-radius:999px;pointer-events:none;display:flex;align-items:center;gap:8px;box-shadow:0 4px 18px rgba(0,0,0,0.35);z-index:20}
+.drive-tip kbd{background:#1e293b;border:1px solid #475569;color:#38bdf8;font:700 11px var(--mono);padding:1px 5px;border-radius:4px}
 /* Pantalla de monitoreo */
 .mon{background:var(--scr);color:var(--scr-ink);overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:12px;min-width:0;border-left:1px solid var(--scr-line)}
 .mon header{display:flex;align-items:center;gap:8px;font:600 10.5px var(--mono);letter-spacing:.12em}
@@ -163,14 +165,14 @@ kbd{font:600 10.5px var(--mono);border:1px solid var(--line);border-bottom-width
     <!-- Navegación y estado de conexión -->
     <div class="sync-banner">
       <div id="fbStatus" class="status-pill"><span class="dot-online"></span> Firebase iotaura: Conectando...</div>
-      <div class="status-pill sub"><span class="dot-blue"></span> Arduino UNO: Barrera 1 (Pin 9)</div>
+      <div class="status-pill sub"><span class="dot-blue"></span> Arduino UNO: Barrera 1 (Pin 10 · Servo)</div>
       <a href="./index.html" class="btn-return">← Volver al Dashboard 2D</a>
     </div>
 
-    <!-- Panel de Control Barrera 1 (Entrada / Hardware Servo Pin 9) -->
+    <!-- Panel de Control Barrera 1 (Entrada / Hardware Servo Pin 10) -->
     <div class="sec barrier-box">
       <div class="barrier-header">
-        <h2>Barrera 1 (Entrada · Pin 9)</h2>
+        <h2>Barrera 1 (Entrada · Pin 10)</h2>
         <span id="b1Badge" class="badge-closed">CERRADA 0°</span>
       </div>
       <div class="row">
@@ -178,7 +180,7 @@ kbd{font:600 10.5px var(--mono);border:1px solid var(--line);border-bottom-width
         <button id="btnCloseB1" class="btn-gate btn-close" onclick="window.setBarrier3D('entry','closed')">▼ Cerrar (0°)</button>
       </div>
       <button id="btnToggleB1" class="btn-toggle" onclick="window.toggleBarrier3D('entry')">⇄ Alternar Barrera 1</button>
-      <small class="hardware-note">Sincronizado en tiempo real con servo Pin 9 y botón Pin 2 en Arduino UNO vía Firebase.</small>
+      <small class="hardware-note">Sincronizado en tiempo real con servo Pin 10 y botón Pin 2 en Arduino UNO vía Firebase / Web Serial.</small>
     </div>
 
     <!-- Control de Barrera 2 (Salida) -->
@@ -223,6 +225,9 @@ kbd{font:600 10.5px var(--mono);border:1px solid var(--line);border-bottom-width
     <p class="help"><b>Arrastrar</b><span>girar</span><b>Rueda</b><span>zoom</span><b>Clic derecho</b><span>desplazar</span><b>Clic en auto</b><span>elegirlo</span></p>
   </aside>
   <main class="stage" id="stage"><canvas id="c"></canvas><div class="tags" id="tags"></div>
+    <div class="drive-tip" id="driveTip">
+      <span>🚗 Maneja con <kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd> hacia la entrada: el sensor ultrasónico abrirá la barrera automáticamente</span>
+    </div>
     <div class="hud" id="hud"></div>
     <div class="toasts" id="toasts" aria-live="polite"></div>
     <div class="dpad" id="dpad" aria-label="Controles de conducción">
@@ -238,7 +243,7 @@ kbd{font:600 10.5px var(--mono);border:1px solid var(--line);border-bottom-width
     <h3>Plazas (HC-SR04)</h3>
     <div class="map" id="map"><div class="lane"><span>CALLE ↑</span></div></div>
     <h3>Accesos y Barreras IoT</h3>
-    <div class="acc"><div id="accEnt"><small>SENSOR ENTRADA</small><b id="entSt">Carril vacío</b><span id="entD">sin eco</span></div><div id="accBar"><small>BARRERA 1 (PIN 9)</small><b id="barSt">CERRADA</b><span id="barWhy">Esperando un auto</span></div><div id="accSal"><small>SENSOR SALIDA</small><b id="salSt">Salida libre</b><span id="salD">sin eco</span></div><div id="accBar2"><small>BARRERA 2 (SALIDA)</small><b id="bar2St">CERRADA</b><span id="bar2Why">Esperando un auto</span></div></div>
+    <div class="acc"><div id="accEnt"><small>SENSOR ENTRADA</small><b id="entSt">Carril vacío</b><span id="entD">sin eco</span></div><div id="accBar"><small>BARRERA 1 (PIN 10)</small><b id="barSt">CERRADA</b><span id="barWhy">Esperando un auto</span></div><div id="accSal"><small>SENSOR SALIDA</small><b id="salSt">Salida libre</b><span id="salD">sin eco</span></div><div id="accBar2"><small>BARRERA 2 (SALIDA)</small><b id="bar2St">CERRADA</b><span id="bar2Why">Esperando un auto</span></div></div>
     <h3>Registro de eventos</h3>
     <ol class="log" id="log"></ol>
     <p class="foot">
@@ -1422,7 +1427,7 @@ const fmtT=ms=>{ const s=Math.floor(ms/1000); return Math.floor(s/60)+':'+String
 
 // ---------- Sensores ----------
 // Cada HC-SR04 se simula con rayos dentro de su cono de ±15°; devuelve la distancia al auto más cercano (mm).
-const TH_PLAZA=100, TH_ENT=150, TH_SAL=160, RANGE=400;
+const TH_PLAZA=100, TH_ENT=220, TH_SAL=200, RANGE=400;
 function rayBox(ox,oy,dx,dy,b){ const rx=ox-b.cx, ry=oy-b.cy, lx=rx*b.ux+ry*b.uy, ly=-rx*b.uy+ry*b.ux, ldx=dx*b.ux+dy*b.uy, ldy=-dx*b.uy+dy*b.ux;
   let t0=0,t1=1e9; const ax=[[lx,ldx,b.hx],[ly,ldy,b.hy]];
   for(let i=0;i<2;i++){ const o=ax[i][0],d=ax[i][1],h=ax[i][2]; if(Math.abs(d)<1e-9){ if(Math.abs(o)>h) return Infinity; } else { let a=(-h-o)/d, c=(h-o)/d; if(a>c){const s=a;a=c;c=s;} t0=Math.max(t0,a); t1=Math.min(t1,c); if(t0>t1) return Infinity; } }
@@ -1469,22 +1474,45 @@ function sense(now,dt){
   const lib=6-sensors.slice(0,6).filter(s=>s.on).length, ent=sensors[6], sal=sensors[7];
   if(quiet) inCount=6-lib;
   if(lib!==lastLib){ if(!quiet&&lib===0) logEvent('AVISO','Estacionamiento lleno'); lastLib=lib; drawLcd(lib); }
-  // Lógica de la barrera de entrada (Barrera 1 · Sincronizada con Firebase / Pin 9):
-  if(window._remoteBarrierEntry !== undefined && window._remoteBarrierEntry !== null){
-    armTarget = window._remoteBarrierEntry ? Math.PI/2 : 0;
-  } else {
-    if(ent.on&&lib>0){ armTarget=Math.PI/2; lastDetect=now; }
-    else if(now-lastDetect>2000&&!cars.some(c=>overlap(carBox(c),ARM))) armTarget=0;
+  // Lógica de la barrera de entrada (Barrera 1 · Sensor ultrasónico + Firebase / Web Serial Pin 10):
+  if (ent.on && lib > 0) {
+    armTarget = Math.PI / 2;
+    lastDetect = now;
+  } else if (window._remoteBarrierEntry === true) {
+    armTarget = Math.PI / 2;
+  } else if (now - lastDetect > 2200 && !cars.some(c => overlap(carBox(c), ARM))) {
+    armTarget = 0;
   }
-  const open=armTarget>0; if(open!==wasOpen){ wasOpen=open; if(!quiet) logEvent('BARRERA',open?'Barrera 1 (Entrada) abierta':'Barrera 1 (Entrada) cerrada'); }
+  const open = armTarget > 0;
+  if (open !== wasOpen) {
+    wasOpen = open;
+    if (!quiet) {
+      logEvent('BARRERA', open ? 'Barrera 1 (Entrada) abierta' : 'Barrera 1 (Entrada) cerrada');
+      if (window.on3DBarrierSensorTrigger) {
+        window.on3DBarrierSensorTrigger('entry', open ? 'open' : 'closed');
+      }
+    }
+  }
+
   // Barrera de salida (Barrera 2):
-  if(window._remoteBarrierExit !== undefined && window._remoteBarrierExit !== null){
-    arm2Target = window._remoteBarrierExit ? Math.PI/2 : 0;
-  } else {
-    if(sal.on){ arm2Target=Math.PI/2; lastDetect2=now; }
-    else if(now-lastDetect2>2000&&!cars.some(c=>overlap(carBox(c),ARM2))) arm2Target=0;
+  if (sal.on) {
+    arm2Target = Math.PI / 2;
+    lastDetect2 = now;
+  } else if (window._remoteBarrierExit === true) {
+    arm2Target = Math.PI / 2;
+  } else if (now - lastDetect2 > 2200 && !cars.some(c => overlap(carBox(c), ARM2))) {
+    arm2Target = 0;
   }
-  const open2=arm2Target>0; if(open2!==wasOpen2){ wasOpen2=open2; if(!quiet) logEvent('BARRERA',open2?'Barrera 2 (Salida) abierta':'Barrera 2 (Salida) cerrada'); }
+  const open2 = arm2Target > 0;
+  if (open2 !== wasOpen2) {
+    wasOpen2 = open2;
+    if (!quiet) {
+      logEvent('BARRERA', open2 ? 'Barrera 2 (Salida) abierta' : 'Barrera 2 (Salida) cerrada');
+      if (window.on3DBarrierSensorTrigger) {
+        window.on3DBarrierSensorTrigger('exit', open2 ? 'open' : 'closed');
+      }
+    }
+  }
   if(sal.on&&open2) passing2=true;
   // Conteo como lo haría el ESP32: una entrada cuando el auto deja el sensor de entrada tras abrirse la barrera; una salida cuando deja el sensor de salida.
   if(ent.on&&open) passing=true;
@@ -1567,15 +1595,27 @@ window.smartParking={
   place,
   setBarrierEntry: function(open){
     window._remoteBarrierEntry = !!open;
-    armTarget = open ? Math.PI/2 : 0;
-    if(open) lastDetect = performance.now() + 1e9;
-    else lastDetect = -1e9;
+    if(open){
+      armTarget = Math.PI/2;
+      lastDetect = performance.now() + 1e9;
+    } else {
+      if(!sensors[6] || !sensors[6].on){
+        armTarget = 0;
+        lastDetect = -1e9;
+      }
+    }
   },
   setBarrierExit: function(open){
     window._remoteBarrierExit = !!open;
-    arm2Target = open ? Math.PI/2 : 0;
-    if(open) lastDetect2 = performance.now() + 1e9;
-    else lastDetect2 = -1e9;
+    if(open){
+      arm2Target = Math.PI/2;
+      lastDetect2 = performance.now() + 1e9;
+    } else {
+      if(!sensors[7] || !sensors[7].on){
+        arm2Target = 0;
+        lastDetect2 = -1e9;
+      }
+    }
   },
   setSlotOccupied: function(slotIndex, occupied){
     if(slotIndex < 0 || slotIndex > 5) return;
@@ -1689,8 +1729,13 @@ try {
     updateFbStatus(true);
     if (snap.exists()) {
       const data = snap.data();
-      const entryStatus = data.entry?.status || (data.entry === 'open' ? 'open' : 'closed');
-      const exitStatus = data.exit?.status || (data.exit === 'open' ? 'open' : 'closed');
+      const entryData = data.entry || {};
+      const entryStatus = typeof entryData === 'string' ? entryData : (entryData.status || 'closed');
+      const entrySource = entryData.source || 'web';
+
+      const exitData = data.exit || {};
+      const exitStatus = typeof exitData === 'string' ? exitData : (exitData.status || 'closed');
+      const exitSource = exitData.source || 'web';
       
       currentBarrierState.entry = entryStatus;
       currentBarrierState.exit = exitStatus;
@@ -1698,11 +1743,20 @@ try {
       updateBarrierUI('entry', entryStatus);
       updateBarrierUI('exit', exitStatus);
 
-      if (window.smartParking && window.smartParking.setBarrierEntry) {
-        window.smartParking.setBarrierEntry(entryStatus === 'open');
+      if (entrySource !== 'sensor_3d') {
+        if (window.smartParking && window.smartParking.setBarrierEntry) {
+          window.smartParking.setBarrierEntry(entryStatus === 'open');
+        }
+      } else {
+        window._remoteBarrierEntry = null;
       }
-      if (window.smartParking && window.smartParking.setBarrierExit) {
-        window.smartParking.setBarrierExit(exitStatus === 'open');
+
+      if (exitSource !== 'sensor_3d') {
+        if (window.smartParking && window.smartParking.setBarrierExit) {
+          window.smartParking.setBarrierExit(exitStatus === 'open');
+        }
+      } else {
+        window._remoteBarrierExit = null;
       }
     }
   }, (err) => {
@@ -1748,6 +1802,7 @@ window.setBarrier3D = async function(gate, status) {
       [gate]: {
         status,
         angle,
+        source: 'ui_3d_button',
         lastAction: new Date().toISOString(),
       },
       updatedAt: serverTimestamp()
@@ -1755,6 +1810,27 @@ window.setBarrier3D = async function(gate, status) {
   } catch (err) {
     console.error("[3D Firebase] Error setBarrier3D:", err);
   }
+};
+
+let lastSensorSyncTime = { entry: 0, exit: 0 };
+window.on3DBarrierSensorTrigger = function(gate, status) {
+  const now = Date.now();
+  if (now - (lastSensorSyncTime[gate] || 0) < 1200) return;
+  if (currentBarrierState[gate] === status) return;
+  lastSensorSyncTime[gate] = now;
+  currentBarrierState[gate] = status;
+  updateBarrierUI(gate, status);
+
+  const barrierDocRef = doc(db, "system_state", "barriers");
+  setDoc(barrierDocRef, {
+    [gate]: {
+      status,
+      angle: (status === 'open' ? 90 : 0),
+      source: 'sensor_3d',
+      lastAction: new Date().toISOString()
+    },
+    updatedAt: serverTimestamp()
+  }, { merge: true }).catch(console.warn);
 };
 
 window.toggleBarrier3D = function(gate) {

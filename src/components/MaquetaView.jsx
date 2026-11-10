@@ -247,13 +247,13 @@ export default function MaquetaView({
 
       {/* Gates & Totem Display */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Barrera 1 (Servomotor Pin 9 + Botón Pin 2) */}
-        <div className="game-card p-5 sm:p-6 bg-white dark:bg-[#13141a] flex flex-col justify-between space-y-4 border-2 border-blue-500/30 dark:border-blue-500/20 shadow-md">
+        {/* Barrera 1 (Servomotor Pin 10 + Botón Pin 2) */}
+        <div className="game-card p-5 sm:p-6 bg-white dark:bg-[#13141a] flex flex-col justify-between space-y-4 border-2 border-blue-500/40 dark:border-blue-500/30 shadow-lg rounded-3xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={`w-10 h-10 rounded-xl flex items-center justify-center font-display font-black border transition-all ${
+              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-display font-black border transition-all ${
                 barriers.entry?.status === 'open'
-                  ? 'bg-emerald-500 text-white border-emerald-600 animate-pulse shadow-md scale-105'
+                  ? 'bg-emerald-500 text-white border-emerald-600 animate-pulse shadow-lg shadow-emerald-500/30 scale-105'
                   : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border-zinc-200 dark:border-zinc-700'
               }`}>
                 <ArrowRight className="w-5 h-5" />
@@ -261,117 +261,140 @@ export default function MaquetaView({
               <div>
                 <div className="flex items-center gap-1.5">
                   <h4 className="text-base font-bold text-zinc-900 dark:text-white">
-                    Barrera 1
+                    Barrera 1 (Entrada)
                   </h4>
-                  <span className="px-1.5 py-0.5 rounded text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300">
-                    Pin 9
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
+                    Pin 10 PWM
                   </span>
                 </div>
-                <p className="text-[11px] text-zinc-500">Servo SG90 + Botón Pin 2</p>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">Servo SG90 + Pulsador Pin 2</p>
               </div>
             </div>
 
-            <span className={`px-3 py-1 rounded-full text-xs font-bold ${
+            <span className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
               barriers.entry?.status === 'open' 
-                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300 animate-pulse' 
-                : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-400 shadow-sm animate-pulse' 
+                : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-700'
             }`}>
-              {barriers.entry?.status === 'open' ? '▲ Abierta (90°)' : '▼ Cerrada (0°)'}
+              {barriers.entry?.status === 'open' ? '▲ ABIERTA (90°)' : '▼ CERRADA (0°)'}
             </span>
           </div>
 
           {/* Visual Barrier Arm Animation */}
-          <div className="h-16 bg-zinc-100 dark:bg-zinc-900 rounded-xl p-3 border border-zinc-200 dark:border-zinc-800 relative overflow-hidden flex items-center">
-            <div className="w-6 h-10 bg-amber-500 rounded-md border border-zinc-900 z-10 flex items-center justify-center shadow">
-              <div className="w-2.5 h-2.5 rounded-full bg-zinc-900"></div>
+          <div className="h-20 bg-zinc-100 dark:bg-zinc-900 rounded-2xl p-3 border border-zinc-200 dark:border-zinc-800 relative overflow-hidden flex items-center justify-start">
+            <div className="w-7 h-12 bg-amber-500 rounded-lg border-2 border-zinc-900 z-10 flex items-center justify-center shadow-md">
+              <div className="w-3 h-3 rounded-full bg-zinc-900"></div>
             </div>
             <div 
-              className="h-3.5 flex-1 rounded-r-md border border-zinc-900 ml-1 origin-left transition-transform duration-700 shadow-md flex"
+              className="h-4 flex-1 rounded-r-lg border-2 border-zinc-900 ml-1 origin-left transition-transform duration-700 shadow-md flex"
               style={{
-                transform: barriers.entry?.status === 'open' ? 'rotate(-65deg) translateY(-10px)' : 'rotate(0deg)',
-                backgroundImage: 'repeating-linear-gradient(45deg, #ef4444, #ef4444 12px, #ffffff 12px, #ffffff 24px)'
+                transform: barriers.entry?.status === 'open' ? 'rotate(-65deg) translateY(-14px)' : 'rotate(0deg)',
+                backgroundImage: 'repeating-linear-gradient(45deg, #ef4444, #ef4444 14px, #ffffff 14px, #ffffff 28px)'
               }}
             ></div>
+            <span className="absolute right-3 text-[10px] font-mono text-zinc-400 select-none">
+              {barriers.entry?.status === 'open' ? '90° Paso Libre' : '0° Barrera Abajo'}
+            </span>
           </div>
 
-          {/* Direct Open / Close Controls for Barrera 1 */}
-          <div className="space-y-2">
+          {/* Botón Principal Prominente: Toggle 'T' */}
+          <div className="space-y-2.5">
+            <button
+              onClick={() => onToggleBarrier('entry')}
+              className={`w-full py-3.5 px-4 rounded-2xl text-sm font-black transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 ${
+                barriers.entry?.status === 'open'
+                  ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-500/20'
+                  : 'bg-blue-600 hover:bg-blue-500 text-white shadow-blue-500/25'
+              }`}
+            >
+              <Sliders className="w-4 h-4" />
+              <span>
+                {barriers.entry?.status === 'open' ? '▼ Cerrar Barrera (Enviar "T")' : '▲ Abrir Barrera (Enviar "T")'}
+              </span>
+            </button>
+
+            {/* Botones secundarios directos */}
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => handleOpenGate('entry')}
-                className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 ${
+                className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border ${
                   barriers.entry?.status === 'open'
-                    ? 'bg-emerald-700 text-white opacity-60 cursor-default'
-                    : 'bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white shadow-emerald-500/20'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+                    : 'bg-zinc-50 dark:bg-zinc-800/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 text-zinc-700 dark:text-zinc-200 border-zinc-200 dark:border-zinc-700'
                 }`}
-                title="Abrir Barrera 1 lentamente de 0° a 90°"
+                title="Abrir a 90°"
               >
-                <span>▲ Abrir Barrera 1</span>
+                ▲ Abrir (90°)
               </button>
 
               <button
                 onClick={() => handleCloseGate('entry')}
-                className={`py-2.5 px-3 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 ${
+                className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border ${
                   barriers.entry?.status === 'closed'
-                    ? 'bg-zinc-300 dark:bg-zinc-800 text-zinc-500 opacity-60 cursor-default'
-                    : 'bg-red-600 hover:bg-red-500 active:scale-95 text-white shadow-red-500/20'
+                    ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-300 dark:border-red-800'
+                    : 'bg-zinc-50 dark:bg-zinc-800/60 hover:bg-red-50 dark:hover:bg-red-950/30 text-zinc-700 dark:text-zinc-200 border-zinc-200 dark:border-zinc-700'
                 }`}
-                title="Cerrar Barrera 1 lentamente de 90° a 0°"
+                title="Cerrar a 0°"
               >
-                <span>▼ Cerrar Barrera 1</span>
+                ▼ Cerrar (0°)
               </button>
             </div>
-
-            <button
-              onClick={() => onToggleBarrier('entry')}
-              className="w-full py-2 px-3 rounded-xl text-xs font-semibold bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors"
-            >
-              {barriers.entry?.status === 'open' ? 'Alternar Barrera 1 ➔ Cerrar' : 'Alternar Barrera 1 ➔ Abrir'}
-            </button>
           </div>
         </div>
 
         {/* Panel Central: Monitor de Barrera 1 & Hardware Arduino */}
-        <div className="game-card p-5 sm:p-6 bg-zinc-950 text-white font-mono border-zinc-800 flex flex-col justify-between space-y-3 shadow-inner">
-          <div className="flex items-center justify-between text-xs font-semibold text-zinc-400 border-b border-zinc-800/80 pb-2">
-            <span className="flex items-center gap-1.5 text-blue-400">
-              <span className="w-2 h-2 rounded-full bg-blue-500 animate-pulse"></span>
-              ESTADO DE BARRERA 1
+        <div className="game-card p-5 sm:p-6 bg-zinc-950 text-white font-mono border-zinc-800 flex flex-col justify-between space-y-4 shadow-xl rounded-3xl">
+          <div className="flex items-center justify-between text-xs font-semibold text-zinc-400 border-b border-zinc-800/80 pb-3">
+            <span className="flex items-center gap-2 text-emerald-400">
+              <span className="w-2.5 h-2.5 rounded-full bg-emerald-500 animate-pulse"></span>
+              ESTADO EN TIEMPO REAL
             </span>
-            <span className="text-zinc-400 text-[11px]">ARDUINO UNO</span>
+            <span className="text-zinc-400 text-[11px] px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800">
+              ARDUINO UNO
+            </span>
           </div>
 
-          <div className="space-y-2 py-1">
-            <div className="bg-black/70 rounded-xl p-3 border border-zinc-800 space-y-1.5 font-sans">
+          <div className="space-y-3 py-1">
+            <div className="bg-black/70 rounded-2xl p-4 border border-zinc-800/80 space-y-2 font-sans">
               <div className="flex items-center justify-between text-xs">
                 <span className="text-zinc-400">Servomotor:</span>
-                <span className="font-bold text-white font-mono">Pin 9 (PWM)</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-zinc-400">Pulsador Físico:</span>
-                <span className="font-bold text-white font-mono">Pin 2 (Pull-up)</span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-zinc-400">Posición Actual:</span>
-                <span className={`font-bold font-mono ${barriers.entry?.status === 'open' ? 'text-emerald-400' : 'text-amber-400'}`}>
-                  {barriers.entry?.status === 'open' ? '90° (Levantada)' : '0° (Horizontal)'}
+                <span className="font-bold text-white font-mono bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800">
+                  Pin 10 (PWM)
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs">
-                <span className="text-zinc-400">Velocidad:</span>
-                <span className="text-zinc-300 font-mono">20 ms / grado</span>
+                <span className="text-zinc-400">Pulsador Físico:</span>
+                <span className="font-bold text-white font-mono bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800">
+                  Pin 2 (Pull-up)
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-zinc-400">Respuesta Arduino:</span>
+                <span className={`font-bold font-mono px-2 py-0.5 rounded ${
+                  barriers.entry?.status === 'open' 
+                    ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' 
+                    : 'bg-zinc-900 text-amber-300 border border-zinc-800'
+                }`}>
+                  {barriers.entry?.status === 'open' ? 'ESTADO: ABIERTA' : 'ESTADO: CERRADA'}
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-zinc-400">Conexión USB:</span>
+                <span className={`font-bold font-mono ${arduinoConnected ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                  {arduinoConnected ? 'Conectado a 9600 Bd' : 'Sin conexión USB'}
+                </span>
               </div>
             </div>
 
-            <div className="text-[11px] text-zinc-400 bg-zinc-900/90 p-2 rounded-lg border border-zinc-800 flex items-center justify-between">
-              <span>Control Dual:</span>
-              <span className="text-emerald-400 font-semibold">Web + Botón Físico</span>
+            <div className="text-[11px] text-zinc-300 bg-zinc-900/90 p-2.5 rounded-xl border border-zinc-800/80 flex items-center justify-between">
+              <span>Control Sincronizado:</span>
+              <span className="text-emerald-400 font-semibold">Web + Botón + 3D</span>
             </div>
           </div>
 
-          <div className="text-[11px] text-zinc-500 flex items-center justify-between">
+          <div className="text-[11px] text-zinc-500 flex items-center justify-between pt-2 border-t border-zinc-900">
             <span>iotAURA Maqueta</span>
-            <span className="text-emerald-500 font-bold">En Línea</span>
+            <span className="text-emerald-500 font-bold">● En Línea</span>
           </div>
         </div>
 

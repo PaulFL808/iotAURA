@@ -216,6 +216,19 @@ export default function App() {
       }
     });
 
+    const unBarrierStatus = arduinoSerial.on('barrierStatus', ({ status, gate, rawText }) => {
+      const angle = (status === 'open' ? 90 : 0);
+      updateBarrierInFirestore(gate || 'entry', status, angle).catch(() => {});
+      setParkingState(prev => ({
+        ...(prev || {}),
+        barriers: {
+          ...(prev?.barriers || {}),
+          [gate || 'entry']: { status, angle, lastAction: new Date().toISOString() }
+        }
+      }));
+      showToast(`Arduino Serial: ${rawText || (status === 'open' ? 'ESTADO: ABIERTA' : 'ESTADO: CERRADA')}`, status === 'open' ? 'info' : 'success');
+    });
+
     const unBarrierEvent = arduinoSerial.on('barrierEvent', (event, data) => {
       if (event === 'BARRIER_ENTRY_OPEN' || event === 'BARRIER_OPEN') {
         updateBarrierInFirestore('entry', 'open', 90).catch(() => {});
@@ -236,7 +249,7 @@ export default function App() {
             entry: { status: 'closed', angle: 0, lastAction: new Date().toISOString() }
           }
         }));
-        showToast(`Barrera CERRADA · Ocupados: ${data?.ocupados ?? ''} | Libres: ${data?.libres ?? ''}`, 'success');
+        showToast('Barrera CERRADA', 'success');
       }
     });
 
@@ -244,6 +257,7 @@ export default function App() {
       unStatus();
       unLog();
       unTelemetry();
+      unBarrierStatus();
       unBarrierEvent();
     };
   }, []);
@@ -327,11 +341,11 @@ export default function App() {
       
       const angle = targetStatus === 'open' ? 90 : 0;
 
-      // 1. Si Arduino UNO está conectado por Web Serial, enviar comando de servomotor inmediatamente
+      // 1. Si Arduino UNO está conectado por Web Serial, enviar carácter 'T' para alternar la barrera física
       if (arduinoConnected) {
         if (gate === 'entry') {
-          if (targetStatus === 'open') await arduinoSerial.openEntry();
-          else await arduinoSerial.closeEntry();
+          // El Arduino cambia de estado cuando recibe 'T'
+          await arduinoSerial.toggleBarrier();
         } else {
           if (targetStatus === 'open') await arduinoSerial.openExit();
           else await arduinoSerial.closeExit();
