@@ -13,7 +13,8 @@ import {
   User, 
   LogOut,
   Cpu,
-  Flame
+  Flame,
+  Box
 } from 'lucide-react';
 
 export default function Header({ 
@@ -36,6 +37,7 @@ export default function Header({
   // Navegación limpia y directa
   const allTabs = [
     { id: 'maqueta', label: 'Monitor IoT & Maqueta', icon: LayoutDashboard, adminOnly: false },
+    { id: 'maqueta3d', label: 'Maqueta 3D', icon: Box, adminOnly: false },
     { id: 'reserva', label: 'Reservar Plaza', icon: CalendarClock, adminOnly: false },
     { id: 'crud', label: 'Gestión Plazas', icon: Database, adminOnly: true },
     { id: 'dashboard', label: 'Analíticas', icon: Radio, adminOnly: true },

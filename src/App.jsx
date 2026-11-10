@@ -446,6 +446,41 @@ export default function App() {
           />
         )}
 
+        {currentTab === 'maqueta3d' && (
+          <div className="space-y-4 animate-fadeIn">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-white dark:bg-[#13141a] p-4 rounded-2xl border border-zinc-200 dark:border-zinc-800 shadow-sm">
+              <div>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-bold text-zinc-950 dark:text-white">Simulador 3D Interactivo</h2>
+                  <span className="px-2 py-0.5 text-[10px] font-mono font-semibold bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 rounded-full border border-emerald-200 dark:border-emerald-800">
+                    Sincronizado con Firebase iotaura
+                  </span>
+                </div>
+                <p className="text-xs text-zinc-500 dark:text-zinc-400 mt-0.5">
+                  Visualización Three.js con física de autos, sensores HC-SR04 y sincronización bidireccional con Arduino UNO (Barrera 1 Pin 9).
+                </p>
+              </div>
+              <div className="flex items-center gap-2 w-full sm:w-auto">
+                <a 
+                  href="./maqueta3d.html" 
+                  target="_blank" 
+                  rel="noreferrer" 
+                  className="w-full sm:w-auto text-center text-xs font-semibold px-4 py-2 bg-blue-600 hover:bg-blue-500 text-white rounded-xl transition-all shadow-md shadow-blue-500/10 flex items-center justify-center gap-1.5"
+                >
+                  Abrir en Ventana Completa ↗
+                </a>
+              </div>
+            </div>
+            <div className="w-full rounded-2xl overflow-hidden border border-zinc-200 dark:border-zinc-800 shadow-xl bg-zinc-900">
+              <iframe 
+                src="./maqueta3d.html" 
+                title="Maqueta 3D iotAURA" 
+                className="w-full h-[78vh] min-h-[620px] border-0" 
+              />
+            </div>
+          </div>
+        )}
+
         {currentTab === 'reserva' && (
           <ReservationTerminal
             slots={parkingState?.slots || []}
