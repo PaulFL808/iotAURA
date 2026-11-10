@@ -324,37 +324,43 @@ export default function MaquetaView({
           </div>
         </div>
 
-        {/* LCD Totem Replica */}
-        <div className="game-card p-5 sm:p-6 bg-zinc-950 text-emerald-400 font-mono border-zinc-800 flex flex-col justify-between space-y-3">
+        {/* Display 7 Segmentos x 4 Dígitos (SevSeg) Réplica */}
+        <div className="game-card p-5 sm:p-6 bg-zinc-950 text-red-500 font-mono border-zinc-800 flex flex-col justify-between space-y-3 shadow-inner">
           <div className="flex items-center justify-between text-xs font-semibold text-zinc-500 border-b border-zinc-800/80 pb-2">
-            <span className="flex items-center gap-1.5 text-emerald-400">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
-              PANTALLA LCD 16x2 I2C
+            <span className="flex items-center gap-1.5 text-red-400">
+              <span className="w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
+              DISPLAY 7 SEGMENTOS (SevSeg)
             </span>
-            <span className="text-zinc-400 text-[11px]">DIREC: 0x27</span>
+            <span className="text-zinc-400 text-[11px]">4 DÍGITOS</span>
           </div>
 
-          <div className="space-y-1.5 py-1">
-            <div className="flex justify-between items-baseline">
-              <span className="text-xl font-black tracking-wider text-white">
-                LIBRES: {availableCount} / 6
-              </span>
-              <span className={`text-xs font-bold px-2 py-0.5 rounded ${
-                availableCount === 0 ? 'bg-red-950 text-red-400' : 'bg-emerald-950 text-emerald-300'
-              }`}>
-                {availableCount === 0 ? 'ESTADO: LLENO' : 'DISPONIBLE'}
-              </span>
+          <div className="space-y-2 py-1">
+            {/* Glowing 7-Segment Numbers */}
+            <div className="bg-black/80 rounded-xl p-3 border border-red-950 flex items-center justify-center gap-3">
+              <div className="text-center">
+                <span className="block text-[10px] text-zinc-500 uppercase tracking-widest font-sans font-bold">Ocupados</span>
+                <span className="text-3xl sm:text-4xl font-mono font-black text-red-500 tracking-widest drop-shadow-[0_0_8px_rgba(239,68,68,0.8)]">
+                  {String(occupiedCount).padStart(2, '0')}
+                </span>
+              </div>
+              <span className="text-2xl text-zinc-700 font-mono font-bold">:</span>
+              <div className="text-center">
+                <span className="block text-[10px] text-zinc-500 uppercase tracking-widest font-sans font-bold">Libres</span>
+                <span className="text-3xl sm:text-4xl font-mono font-black text-emerald-400 tracking-widest drop-shadow-[0_0_8px_rgba(52,211,153,0.8)]">
+                  {String(availableCount).padStart(2, '0')}
+                </span>
+              </div>
             </div>
 
-            <div className="text-xs text-emerald-400 bg-zinc-900/90 p-2 rounded-lg border border-zinc-800 flex items-center justify-between">
-              <span>TARIFA: $35/MIN</span>
-              <span>iotAURA</span>
+            <div className="text-[11px] text-zinc-400 bg-zinc-900/90 p-2 rounded-lg border border-zinc-800 flex items-center justify-between">
+              <span>Display Físico: <strong className="text-white font-mono">{String(occupiedCount).padStart(2, '0')}{String(availableCount).padStart(2, '0')}</strong></span>
+              <span className="text-zinc-500">Pines: 10-13 / 3-8, A0-A1</span>
             </div>
           </div>
 
           <div className="text-[11px] text-zinc-500 flex items-center justify-between">
-            <span>Sensores HC-SR04</span>
-            <span className="text-emerald-500 font-bold">En línea</span>
+            <span>Botón Físico: Pin 2</span>
+            <span className="text-emerald-500 font-bold">Sincronizado</span>
           </div>
         </div>
 

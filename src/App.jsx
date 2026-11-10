@@ -169,24 +169,74 @@ export default function App() {
       setArduinoLogs(prev => [...prev.slice(-49), logItem]);
     });
 
-    const unTelemetry = arduinoSerial.on('telemetry', (telemetrySlots) => {
-      // Telemetría recibida desde Arduino (HC-SR04)
-      telemetrySlots.forEach(s => {
-        updateTelemetryInFirestore(s.id, s.dist).catch(e => {
-          console.warn('[Telemetry Firestore Sync]:', e.message);
+    const unTelemetry = arduinoSerial.on('telemetry', (telemetryData) => {
+      // Formato A: Slots individuales (HC-SR04)
+      if (Array.isArray(telemetryData?.slots)) {
+        telemetryData.slots.forEach(s => {
+          updateTelemetryInFirestore(s.id, s.dist).catch(() => {});
         });
-      });
+      }
+
+      // Formato B: Contadores de la maqueta física SevSeg (Libres y Ocupados)
+      if (telemetryData?.libres !== undefined && telemetryData?.ocupados !== undefined) {
+        const freeCount = Number(telemetryData.libres);
+        const occCount = Number(telemetryData.ocupados);
+        const barrierStatus = telemetryData.barrier || (telemetryData.angle > 0 ? 'open' : 'closed');
+        const angle = Number(telemetryData.angle) || (barrierStatus === 'open' ? 90 : 0);
+
+        setParkingState(prev => {
+          const currentSlots = prev?.slots || [];
+          const updatedSlots = currentSlots.map((slot, idx) => {
+            const shouldBeOccupied = idx < occCount;
+            return {
+              ...slot,
+              status: shouldBeOccupied ? 'occupied' : 'available',
+              distanceCm: shouldBeOccupied ? 6.0 : 45.0,
+              vehiclePlate: shouldBeOccupied ? (slot.vehiclePlate || `CL-202${idx + 1}`) : null,
+              driverName: shouldBeOccupied ? (slot.driverName || `Auto ${idx + 1}`) : null,
+            };
+          });
+
+          return {
+            ...(prev || {}),
+            slots: updatedSlots,
+            barriers: {
+              entry: { status: barrierStatus, angle, lastAction: new Date().toISOString() },
+              exit: prev?.barriers?.exit || { status: 'closed', angle: 0, lastAction: new Date().toISOString() }
+            },
+            summary: {
+              total: freeCount + occCount,
+              available: freeCount,
+              occupied: occCount,
+              reserved: prev?.summary?.reserved || 0,
+              occupancyPercentage: Math.round((occCount / (freeCount + occCount || 1)) * 100),
+            }
+          };
+        });
+      }
     });
 
-    const unBarrierEvent = arduinoSerial.on('barrierEvent', (event) => {
-      if (event === 'BARRIER_ENTRY_OPEN') {
+    const unBarrierEvent = arduinoSerial.on('barrierEvent', (event, data) => {
+      if (event === 'BARRIER_ENTRY_OPEN' || event === 'BARRIER_OPEN') {
         updateBarrierInFirestore('entry', 'open', 90).catch(() => {});
-      } else if (event === 'BARRIER_ENTRY_CLOSED') {
+        setParkingState(prev => ({
+          ...(prev || {}),
+          barriers: {
+            ...(prev?.barriers || {}),
+            entry: { status: 'open', angle: 90, lastAction: new Date().toISOString() }
+          }
+        }));
+        showToast('Barrera ABIERTA (botón físico o comando)', 'info');
+      } else if (event === 'BARRIER_ENTRY_CLOSED' || event === 'BARRIER_CLOSED') {
         updateBarrierInFirestore('entry', 'closed', 0).catch(() => {});
-      } else if (event === 'BARRIER_EXIT_OPEN') {
-        updateBarrierInFirestore('exit', 'open', 90).catch(() => {});
-      } else if (event === 'BARRIER_EXIT_CLOSED') {
-        updateBarrierInFirestore('exit', 'closed', 0).catch(() => {});
+        setParkingState(prev => ({
+          ...(prev || {}),
+          barriers: {
+            ...(prev?.barriers || {}),
+            entry: { status: 'closed', angle: 0, lastAction: new Date().toISOString() }
+          }
+        }));
+        showToast(`Barrera CERRADA · Ocupados: ${data?.ocupados ?? ''} | Libres: ${data?.libres ?? ''}`, 'success');
       }
     });
 

@@ -107,10 +107,10 @@ class ArduinoSerialService {
       if (line.startsWith('{') && line.endsWith('}')) {
         try {
           const data = JSON.parse(line);
-          if (data.type === 'TELEMETRY' && Array.isArray(data.slots)) {
-            this.emit('telemetry', data.slots);
+          if (data.type === 'TELEMETRY') {
+            this.emit('telemetry', data);
           } else if (data.event) {
-            this.emit('barrierEvent', data.event);
+            this.emit('barrierEvent', data.event, data);
           }
         } catch (e) {
           // No es JSON válido, ignorar o procesar como texto
