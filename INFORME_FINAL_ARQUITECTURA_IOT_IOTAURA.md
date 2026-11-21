@@ -6,6 +6,7 @@
 ### DATOS INSTITUCIONALES Y DEL PROYECTO
 - **Nombre del Proyecto:** iotAURA – Sistema Inteligente de Gestión y Control de Acceso de Estacionamientos IoT con Gemelo Digital 3D
 - **Asignaturas Articuladas:** Arquitectura de Software & Internet de las Cosas (IoT)
+- **Docente / Profesor de Asignatura:** Prof. Osvaldo Archile
 - **Integrantes del Equipo:**
   - Paul Ferrada
   - Fabián Mora
@@ -222,6 +223,8 @@ De acuerdo a la pauta, el sistema integra formalmente dos arquitecturas de softw
 
 ### 6.1 Diagrama General de Componentes y Tecnologías
 
+![Figura 1: Diagrama General de Arquitectura, Componentes y Enlaces Tecnológicos de iotAURA](diagramas/diagrama_1_arquitectura_general.png)
+
 ```mermaid
 graph TD
     subgraph HARDWARE_FISICO["Hardware Físico Embebido (Pórtico Real)"]
@@ -263,6 +266,8 @@ graph TD
 ---
 
 ### 6.2 Diagrama de Integración: Delimitación de Arquitecturas
+
+![Figura 2: Diagrama de Integración Arquitectónica y Delimitación de Responsabilidades](diagramas/diagrama_2_integracion_arquitecturas.png)
 
 ```mermaid
 graph LR
@@ -320,6 +325,8 @@ graph LR
 ## 7. FLUJO DE FUNCIONAMIENTO EXTREMO A EXTREMO
 
 ### 7.1 Diagrama de Secuencia General de Acceso
+
+![Figura 3: Diagrama de Secuencia de Flujo Extremo a Extremo](diagramas/diagrama_3_secuencia_flujo.png)
 
 ```mermaid
 sequenceDiagram
