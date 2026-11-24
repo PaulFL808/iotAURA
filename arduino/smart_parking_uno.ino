@@ -1,77 +1,140 @@
 /*
   =============================================================================
   PROYECTO: SMART PARKING IoT (iotAURA) - ARDUINO UNO R3
-  ASIGNATURA: Ramo IoT
+  RAMO: Internet de las Cosas (IoT) & Arquitectura de Software
+  PROFESOR: Osvaldo Archile
   INTEGRANTES:
     - Paul Ferrada
     - Fabián Mora
     - Felipe Labarca
     - Agustín Cañas
 
-  HARDWARE Y CONEXIONES (BARRERA 1):
+  HARDWARE Y CONEXIONES (BARRERA 1 CON FOTORRECEPTORES LDR):
     - Servomotor Barrera 1: Pin 10 (PWM)
-    - Botón Pulsador de Acceso: Pin 2 (INPUT_PULLUP a GND)
-    - Conexión al Computador: Cable USB Serial (9600 baudios)
-    - Protocolo Web Serial:
-        * Enviar carácter 'T' o 't' desde la web para alternar (toggle) la barrera.
-        * El Arduino responde con "ESTADO: ABIERTA" o "ESTADO: CERRADA".
+    - Fotorreceptor LDR 1 (Aproximación/Entrada):
+        * Señal analógica: Pin A0
+        * Alimentación virtual Vcc: Pin Digital 4 (HIGH)
+    - Fotorreceptor LDR 2 (Paso/Salida):
+        * Señal analógica: Pin A1
+        * Alimentación virtual Vcc: Pin Digital 5 (HIGH)
+        * Tierra virtual GND: Pin Digital 6 (LOW)
+    - Comunicación Serie USB: 9600 baudios (Web Serial API)
+    - Funcionamiento:
+        * Calibración automática de luz ambiental en setup() (5 muestras promedio).
+        * Detección por sombra: si lectura > luzBase + 60, abre barrera automáticamente.
+        * Cierre automático con retardo de 1.5s al quedar ambos sensores libres.
+        * Control manual por Web Serial enviando carácter 'T' o 't'.
+        * Notificaciones: "SISTEMA LISTO", "ESTADO: ABIERTA", "ESTADO: CERRADA".
   =============================================================================
 */
 
 #include <Servo.h>
 
-Servo barrera;       
-int pinBoton = 2; // Asegúrate de que el botón esté en el pin 2 o 3, según lo hayas dejado    
+Servo barrera;
 
-bool barreraAbierta = false;       
-int estadoBotonAnterior = HIGH;    
-int velocidad = 20; 
+// Pines de los componentes
+const int pinServo = 10;
+const int ldr1Pin = A0;
+const int ldr2Pin = A1;
+
+// Pines virtuales de energía para los LDR
+const int ldr1Vcc = 4;
+const int ldr2Vcc = 5;
+const int ldr2Gnd = 6;
+
+bool barreraAbierta = false;
+bool abiertaManual = false;
+int velocidad = 20;
+
+// Variables para calibración automática de luz
+int luzBase1 = 0;
+int luzBase2 = 0;
+int margenCambio = 60; // Sensibilidad ajustada para luz de interior
 
 void setup() {
-  Serial.begin(9600); // Abre la comunicación con la página web
-  barrera.attach(10); // Motor en el pin 10
-  barrera.write(0);   
-  pinMode(pinBoton, INPUT_PULLUP); 
+  Serial.begin(9600);
+  
+  // Activamos energía virtual para los módulos LDR
+  pinMode(ldr1Vcc, OUTPUT);
+  digitalWrite(ldr1Vcc, HIGH);
+  
+  pinMode(ldr2Vcc, OUTPUT);
+  digitalWrite(ldr2Vcc, HIGH);
+  
+  pinMode(ldr2Gnd, OUTPUT);
+  digitalWrite(ldr2Gnd, LOW);
+
+  barrera.attach(pinServo);
+  barrera.write(0);
+
+  // Calibración automática de luz ambiente (no tapes los sensores aquí)
+  delay(500);
+  long suma1 = 0;
+  long suma2 = 0;
+  for (int i = 0; i < 5; i++) {
+    suma1 += analogRead(ldr1Pin);
+    suma2 += analogRead(ldr2Pin);
+    delay(50);
+  }
+  luzBase1 = suma1 / 5;
+  luzBase2 = suma2 / 5;
+
+  Serial.println("SISTEMA LISTO");
 }
 
 void loop() {
-  bool activarBarrera = false;
+  int lectura1 = analogRead(ldr1Pin);
+  int lectura2 = analogRead(ldr2Pin);
 
-  // 1. Revisar si se apretó el botón físico
-  int estadoBotonActual = digitalRead(pinBoton); 
-  if (estadoBotonActual == LOW && estadoBotonAnterior == HIGH) {
-    activarBarrera = true;
-  }
-  estadoBotonAnterior = estadoBotonActual;
+  bool sensor1Tapado = abs(lectura1 - luzBase1) > margenCambio;
+  bool sensor2Tapado = abs(lectura2 - luzBase2) > margenCambio;
+  bool autoDetectado = (sensor1Tapado || sensor2Tapado);
 
-  // 2. Revisar si llegó un comando desde la página web
+  // 1. Control manual desde el dashboard web
   if (Serial.available() > 0) {
     char comando = Serial.read();
-    // Si la web envía la letra 'T' (Toggle), activa la barrera
     if (comando == 'T' || comando == 't') {
-      activarBarrera = true;
+      if (!barreraAbierta) {
+        abrirBarrera();
+        abiertaManual = true;
+      } else {
+        cerrarBarrera();
+        abiertaManual = false;
+      }
     }
   }
 
-  // 3. Mover la barrera si fue activada (por botón o por web)
-  if (activarBarrera) {
-    if (barreraAbierta == false) {
-      for (int pos = 0; pos <= 90; pos += 1) { 
-        barrera.write(pos);
-        delay(velocidad); 
-      }
-      barreraAbierta = true; 
-      Serial.println("ESTADO: ABIERTA"); // Le avisa a la web que se abrió
-    } 
-    else {
-      for (int pos = 90; pos >= 0; pos -= 1) { 
-        barrera.write(pos);
-        delay(velocidad); 
-      }
-      barreraAbierta = false; 
-      Serial.println("ESTADO: CERRADA"); // Le avisa a la web que se cerró
+  // 2. Control automático con los sensores LDR
+  if (autoDetectado && !barreraAbierta) {
+    abrirBarrera();
+    abiertaManual = false;
+  } 
+  else if (!autoDetectado && barreraAbierta && !abiertaManual) {
+    delay(1500);
+    bool sigueLibre1 = abs(analogRead(ldr1Pin) - luzBase1) <= margenCambio;
+    bool sigueLibre2 = abs(analogRead(ldr2Pin) - luzBase2) <= margenCambio;
+    if (sigueLibre1 && sigueLibre2) {
+      cerrarBarrera();
     }
   }
-  
-  delay(50); 
+
+  delay(50);
+}
+
+void abrirBarrera() {
+  for (int pos = 0; pos <= 90; pos += 1) {
+    barrera.write(pos);
+    delay(velocidad);
+  }
+  barreraAbierta = true;
+  Serial.println("ESTADO: ABIERTA");
+}
+
+void cerrarBarrera() {
+  for (int pos = 90; pos >= 0; pos -= 1) {
+    barrera.write(pos);
+    delay(velocidad);
+  }
+  barreraAbierta = false;
+  Serial.println("ESTADO: CERRADA");
 }

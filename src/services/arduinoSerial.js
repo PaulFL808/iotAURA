@@ -131,8 +131,11 @@ class ArduinoSerialService {
       this.emit('rawLog', { type: 'rx', text: line, time: new Date().toLocaleTimeString('es-CL') });
 
       // Escuchar específicamente los textos del sketch Arduino:
-      // "ESTADO: ABIERTA" o "ESTADO: CERRADA"
-      if (line.includes('ESTADO: ABIERTA') || line.includes('ENTRY_OPENED') || line === 'ABIERTA') {
+      // "SISTEMA LISTO", "ESTADO: ABIERTA" o "ESTADO: CERRADA"
+      if (line.includes('SISTEMA LISTO')) {
+        this.emit('rawLog', { type: 'success', text: '✅ Arduino: Calibración óptica LDR completada. ¡Sistema listo!', time: new Date().toLocaleTimeString('es-CL') });
+        this.emit('systemReady', { message: 'SISTEMA LISTO' });
+      } else if (line.includes('ESTADO: ABIERTA') || line.includes('ENTRY_OPENED') || line === 'ABIERTA') {
         this.emit('barrierStatus', { status: 'open', gate: 'entry', rawText: line });
         this.emit('barrierEvent', 'BARRIER_ENTRY_OPEN', { status: 'open', rawText: line });
       } else if (line.includes('ESTADO: CERRADA') || line.includes('ENTRY_CLOSED') || line === 'CERRADA') {

@@ -169,6 +169,10 @@ export default function App() {
       setArduinoLogs(prev => [...prev.slice(-49), logItem]);
     });
 
+    const unSystemReady = arduinoSerial.on('systemReady', () => {
+      showToast('Arduino: Sensores LDR calibrados con luz ambiente. ¡Sistema listo!', 'success');
+    });
+
     const unTelemetry = arduinoSerial.on('telemetry', (telemetryData) => {
       // Formato A: Slots individuales (HC-SR04)
       if (Array.isArray(telemetryData?.slots)) {
@@ -256,6 +260,7 @@ export default function App() {
     return () => {
       unStatus();
       unLog();
+      unSystemReady();
       unTelemetry();
       unBarrierStatus();
       unBarrierEvent();

@@ -15,7 +15,11 @@ import {
   ChevronUp,
   Sliders,
   Send,
-  Power
+  Power,
+  Sun,
+  Eye,
+  Sparkles,
+  Timer
 } from 'lucide-react';
 
 // Top-Down Stylized Car SVG
@@ -247,7 +251,7 @@ export default function MaquetaView({
 
       {/* Gates & Totem Display */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Barrera 1 (Servomotor Pin 10 + Botón Pin 2) */}
+        {/* Barrera 1 (Servomotor Pin 10 + 2x LDR Ópticos A0/A1) */}
         <div className="game-card p-5 sm:p-6 bg-white dark:bg-[#13141a] flex flex-col justify-between space-y-4 border-2 border-blue-500/40 dark:border-blue-500/30 shadow-lg rounded-3xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -259,15 +263,21 @@ export default function MaquetaView({
                 <ArrowRight className="w-5 h-5" />
               </div>
               <div>
-                <div className="flex items-center gap-1.5">
+                <div className="flex items-center gap-1.5 flex-wrap">
                   <h4 className="text-base font-bold text-zinc-900 dark:text-white">
                     Barrera 1 (Entrada)
                   </h4>
                   <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-blue-100 text-blue-800 dark:bg-blue-950 dark:text-blue-300 border border-blue-200 dark:border-blue-800">
                     Pin 10 PWM
                   </span>
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1">
+                    <Sun className="w-3 h-3 text-amber-600" />
+                    2x LDR Óptico
+                  </span>
                 </div>
-                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">Servo SG90 + Pulsador Pin 2</p>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                  Servo SG90 + 2x Fotorreceptores LDR (A0 y A1)
+                </p>
               </div>
             </div>
 
@@ -277,6 +287,16 @@ export default function MaquetaView({
                 : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-700'
             }`}>
               {barriers.entry?.status === 'open' ? '▲ ABIERTA (90°)' : '▼ CERRADA (0°)'}
+            </span>
+          </div>
+
+          {/* Detección Óptica Badge */}
+          <div className="flex items-center justify-between px-3 py-1.5 bg-amber-500/10 dark:bg-amber-500/5 rounded-xl border border-amber-500/20 text-[11px]">
+            <span className="flex items-center gap-1.5 font-semibold text-amber-700 dark:text-amber-400">
+              <Eye className="w-3.5 h-3.5" /> Detección por Sombra:
+            </span>
+            <span className="text-zinc-600 dark:text-zinc-300 font-mono text-[10px]">
+              Apertura Auto / Cierre 1.5s
             </span>
           </div>
 
@@ -357,15 +377,33 @@ export default function MaquetaView({
           <div className="space-y-3 py-1">
             <div className="bg-black/70 rounded-2xl p-4 border border-zinc-800/80 space-y-2 font-sans">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-zinc-400">Servomotor:</span>
+                <span className="text-zinc-400">Servomotor SG90:</span>
                 <span className="font-bold text-white font-mono bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800">
                   Pin 10 (PWM)
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs">
-                <span className="text-zinc-400">Pulsador Físico:</span>
-                <span className="font-bold text-white font-mono bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800">
-                  Pin 2 (Pull-up)
+                <span className="text-zinc-400">Fotorreceptor LDR 1:</span>
+                <span className="font-bold text-amber-300 font-mono bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800 text-[11px]">
+                  Pin A0 (Vcc Pin 4)
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-zinc-400">Fotorreceptor LDR 2:</span>
+                <span className="font-bold text-amber-300 font-mono bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800 text-[11px]">
+                  Pin A1 (Vcc 5 / GND 6)
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-zinc-400">Modo Operación:</span>
+                <span className="font-bold text-sky-400 font-mono bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800 text-[11px]">
+                  Auto Sombra (Δ &gt; 60)
+                </span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-zinc-400">Auto-cierre seguro:</span>
+                <span className="font-bold text-zinc-300 font-mono bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800 text-[11px]">
+                  1.5s post-despeje
                 </span>
               </div>
               <div className="flex items-center justify-between text-xs">
@@ -388,12 +426,12 @@ export default function MaquetaView({
 
             <div className="text-[11px] text-zinc-300 bg-zinc-900/90 p-2.5 rounded-xl border border-zinc-800/80 flex items-center justify-between">
               <span>Control Sincronizado:</span>
-              <span className="text-emerald-400 font-semibold">Web + Botón + 3D</span>
+              <span className="text-emerald-400 font-semibold">Web ('T') + 2x LDR + 3D</span>
             </div>
           </div>
 
           <div className="text-[11px] text-zinc-500 flex items-center justify-between pt-2 border-t border-zinc-900">
-            <span>iotAURA Maqueta</span>
+            <span>iotAURA Maqueta Óptica</span>
             <span className="text-emerald-500 font-bold">● En Línea</span>
           </div>
         </div>
@@ -476,7 +514,35 @@ export default function MaquetaView({
         </div>
       </div>
 
-      {/* 6 Parking Slots */}
+            {/* Banner Informativo de los Fotorreceptores LDR */}
+      <div className="game-card p-5 bg-gradient-to-r from-amber-500/10 via-blue-500/10 to-emerald-500/10 border border-amber-500/20 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-500 flex items-center justify-center border border-amber-500/30 flex-shrink-0 shadow-inner">
+            <Sun className="w-6 h-6 animate-pulse" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2 flex-wrap">
+              <h4 className="font-bold text-zinc-900 dark:text-white text-sm">
+                Control Óptico Inteligente: 2x Fotorreceptores LDR Calibrados
+              </h4>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300">
+                Pines A0 y A1 (Vcc 4, 5 / GND 6)
+              </span>
+            </div>
+            <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 max-w-3xl leading-relaxed">
+              El firmware calibra la luz ambiente al iniciar (&quot;SISTEMA LISTO&quot;). Cuando un vehículo genera sombra sobre cualquiera de los sensores (Δ &gt; 60), la barrera se eleva a 90°. Al despejarse ambos fotosensores, se activa un temporizador de seguridad de 1.5s antes del cierre automático a 0°. El botón web envía &quot;T&quot; para conmutación manual.
+            </p>
+          </div>
+        </div>
+        <div className="flex items-center gap-2 flex-shrink-0">
+          <span className="px-3.5 py-2 rounded-xl bg-zinc-900 text-white dark:bg-white dark:text-zinc-900 font-mono text-xs font-bold shadow flex items-center gap-1.5">
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            9600 Baudios
+          </span>
+        </div>
+      </div>
+
+{/* 6 Parking Slots */}
       <div className="space-y-4">
         <div className="flex items-center justify-between px-1">
           <div>
