@@ -233,6 +233,49 @@ export default function App() {
       showToast(`Arduino Serial: ${rawText || (status === 'open' ? 'ESTADO: ABIERTA' : 'ESTADO: CERRADA')}`, status === 'open' ? 'info' : 'success');
     });
 
+    const unSlotStatus = arduinoSerial.on('slotStatus', ({ slotId, code, status, distanceCm }) => {
+      setParkingState(prev => {
+        if (!prev?.slots) return prev;
+        const updatedSlots = prev.slots.map(s => {
+          if (s.id === slotId || s.code === code) {
+            return {
+              ...s,
+              status,
+              distanceCm,
+              vehiclePlate: status === 'occupied' ? (s.vehiclePlate || 'CL-LDR1') : null,
+              driverName: status === 'occupied' ? (s.driverName || 'Sensor LDR A1') : null
+            };
+          }
+          return s;
+        });
+
+        const freeCount = updatedSlots.filter(s => s.status === 'available').length;
+        const occCount = updatedSlots.filter(s => s.status === 'occupied').length;
+        const resCount = updatedSlots.filter(s => s.status === 'reserved').length;
+
+        return {
+          ...prev,
+          slots: updatedSlots,
+          summary: {
+            ...prev.summary,
+            available: freeCount,
+            occupied: occCount,
+            reserved: resCount,
+            occupancyPercentage: Math.round((occCount / (updatedSlots.length || 1)) * 100)
+          }
+        };
+      });
+
+      updateSlotInFirestore(slotId, {
+        status,
+        distanceCm,
+        vehiclePlate: status === 'occupied' ? 'CL-LDR1' : null,
+        driverName: status === 'occupied' ? 'Sensor LDR A1' : null
+      }).catch(() => {});
+
+      showToast(`Puesto 1 (E-01): ${status === 'occupied' ? 'OCUPADO (Sombra vehicular)' : 'LIBRE'} (LDR Pin A1)`, status === 'occupied' ? 'info' : 'success');
+    });
+
     const unBarrierEvent = arduinoSerial.on('barrierEvent', (event, data) => {
       if (event === 'BARRIER_ENTRY_OPEN' || event === 'BARRIER_OPEN') {
         updateBarrierInFirestore('entry', 'open', 90).catch(() => {});
@@ -346,14 +389,14 @@ export default function App() {
       
       const angle = targetStatus === 'open' ? 90 : 0;
 
-      // 1. Si Arduino UNO está conectado por Web Serial, enviar carácter 'T' para alternar la barrera física
+            // 1. Si Arduino UNO está conectado por Web Serial, enviar 'E' (Entrada) o 'S' (Salida)
       if (arduinoConnected) {
         if (gate === 'entry') {
-          // El Arduino cambia de estado cuando recibe 'T'
-          await arduinoSerial.toggleBarrier();
+          // El Arduino cambia de estado de la Barrera de Entrada con 'E'
+          await arduinoSerial.writeChar('E');
         } else {
-          if (targetStatus === 'open') await arduinoSerial.openExit();
-          else await arduinoSerial.closeExit();
+          // El Arduino cambia de estado de la Barrera de Salida con 'S'
+          await arduinoSerial.writeChar('S');
         }
       }
 

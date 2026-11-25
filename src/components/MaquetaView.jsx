@@ -249,9 +249,9 @@ export default function MaquetaView({
         </div>
       </div>
 
-      {/* Gates & Totem Display */}
+      {/* Gates & Totem Display (2x Servomotores + 2x LDR Ópticos) */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
-        {/* Barrera 1 (Servomotor Pin 10 + 2x LDR Ópticos A0/A1) */}
+        {/* Barrera 1 (Servomotor Entrada Pin 10 + LDR Entrada A0) */}
         <div className="game-card p-5 sm:p-6 bg-white dark:bg-[#13141a] flex flex-col justify-between space-y-4 border-2 border-blue-500/40 dark:border-blue-500/30 shadow-lg rounded-3xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
@@ -272,11 +272,11 @@ export default function MaquetaView({
                   </span>
                   <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-200 dark:border-amber-800 flex items-center gap-1">
                     <Sun className="w-3 h-3 text-amber-600" />
-                    2x LDR Óptico
+                    LDR Entrada A0
                   </span>
                 </div>
                 <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
-                  Servo SG90 + 2x Fotorreceptores LDR (A0 y A1)
+                  Servo SG90 + Fotorreceptor LDR en Pin A0
                 </p>
               </div>
             </div>
@@ -293,7 +293,7 @@ export default function MaquetaView({
           {/* Detección Óptica Badge */}
           <div className="flex items-center justify-between px-3 py-1.5 bg-amber-500/10 dark:bg-amber-500/5 rounded-xl border border-amber-500/20 text-[11px]">
             <span className="flex items-center gap-1.5 font-semibold text-amber-700 dark:text-amber-400">
-              <Eye className="w-3.5 h-3.5" /> Detección por Sombra:
+              <Eye className="w-3.5 h-3.5" /> Detección por Sombra (A0):
             </span>
             <span className="text-zinc-600 dark:text-zinc-300 font-mono text-[10px]">
               Apertura Auto / Cierre 1.5s
@@ -317,7 +317,7 @@ export default function MaquetaView({
             </span>
           </div>
 
-          {/* Botón Principal Prominente: Toggle 'T' */}
+          {/* Botón Principal Prominente: Toggle 'E' */}
           <div className="space-y-2.5">
             <button
               onClick={() => onToggleBarrier('entry')}
@@ -329,7 +329,7 @@ export default function MaquetaView({
             >
               <Sliders className="w-4 h-4" />
               <span>
-                {barriers.entry?.status === 'open' ? '▼ Cerrar Barrera (Enviar "T")' : '▲ Abrir Barrera (Enviar "T")'}
+                {barriers.entry?.status === 'open' ? '▼ Cerrar Entrada (Enviar "E")' : '▲ Abrir Entrada (Enviar "E")'}
               </span>
             </button>
 
@@ -362,7 +362,7 @@ export default function MaquetaView({
           </div>
         </div>
 
-        {/* Panel Central: Monitor de Barrera 1 & Hardware Arduino */}
+        {/* Panel Central: Monitor de Hardware Arduino (2 Servos + 2 LDRs) */}
         <div className="game-card p-5 sm:p-6 bg-zinc-950 text-white font-mono border-zinc-800 flex flex-col justify-between space-y-4 shadow-xl rounded-3xl">
           <div className="flex items-center justify-between text-xs font-semibold text-zinc-400 border-b border-zinc-800/80 pb-3">
             <span className="flex items-center gap-2 text-emerald-400">
@@ -374,147 +374,180 @@ export default function MaquetaView({
             </span>
           </div>
 
-          <div className="space-y-3 py-1">
-            <div className="bg-black/70 rounded-2xl p-4 border border-zinc-800/80 space-y-2 font-sans">
+          <div className="space-y-2.5 py-1">
+            <div className="bg-black/70 rounded-2xl p-3.5 border border-zinc-800/80 space-y-2 font-sans">
               <div className="flex items-center justify-between text-xs">
-                <span className="text-zinc-400">Servomotor SG90:</span>
-                <span className="font-bold text-white font-mono bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800">
-                  Pin 10 (PWM)
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-zinc-400">Fotorreceptor LDR 1:</span>
-                <span className="font-bold text-amber-300 font-mono bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800 text-[11px]">
-                  Pin A0 (Vcc Pin 4)
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-zinc-400">Fotorreceptor LDR 2:</span>
-                <span className="font-bold text-amber-300 font-mono bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800 text-[11px]">
-                  Pin A1 (Vcc 5 / GND 6)
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-zinc-400">Modo Operación:</span>
-                <span className="font-bold text-sky-400 font-mono bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800 text-[11px]">
-                  Auto Sombra (Δ &gt; 60)
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-zinc-400">Auto-cierre seguro:</span>
-                <span className="font-bold text-zinc-300 font-mono bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800 text-[11px]">
-                  1.5s post-despeje
-                </span>
-              </div>
-              <div className="flex items-center justify-between text-xs">
-                <span className="text-zinc-400">Respuesta Arduino:</span>
-                <span className={`font-bold font-mono px-2 py-0.5 rounded ${
+                <span className="text-zinc-400">Servo Entrada (Pin 10):</span>
+                <span className={`font-bold font-mono px-2 py-0.5 rounded text-[11px] ${
                   barriers.entry?.status === 'open' 
                     ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' 
-                    : 'bg-zinc-900 text-amber-300 border border-zinc-800'
+                    : 'bg-zinc-900 text-zinc-300 border border-zinc-800'
                 }`}>
-                  {barriers.entry?.status === 'open' ? 'ESTADO: ABIERTA' : 'ESTADO: CERRADA'}
+                  {barriers.entry?.status === 'open' ? 'ENTRADA: ABIERTA' : 'ENTRADA: CERRADA'}
                 </span>
               </div>
+
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-zinc-400">Servo Salida (Pin 9):</span>
+                <span className={`font-bold font-mono px-2 py-0.5 rounded text-[11px] ${
+                  barriers.exit?.status === 'open' 
+                    ? 'bg-emerald-950 text-emerald-300 border border-emerald-800' 
+                    : 'bg-zinc-900 text-zinc-300 border border-zinc-800'
+                }`}>
+                  {barriers.exit?.status === 'open' ? 'SALIDA: ABIERTA' : 'SALIDA: CERRADA'}
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-zinc-400">LDR Barrera Entrada:</span>
+                <span className="font-bold text-amber-300 font-mono bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800 text-[11px]">
+                  Pin A0 (Sombra abre)
+                </span>
+              </div>
+
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-zinc-400">LDR Puesto 1 (E-01):</span>
+                <span className={`font-bold font-mono px-2 py-0.5 rounded text-[11px] ${
+                  slots.find(s => s.id === 1 || s.code === 'E-01')?.status === 'occupied'
+                    ? 'bg-red-950 text-red-300 border border-red-800 animate-pulse'
+                    : 'bg-emerald-950 text-emerald-300 border border-emerald-800'
+                }`}>
+                  Pin A1 ({slots.find(s => s.id === 1 || s.code === 'E-01')?.status === 'occupied' ? 'OCUPADO' : 'LIBRE'})
+                </span>
+              </div>
+
               <div className="flex items-center justify-between text-xs">
                 <span className="text-zinc-400">Conexión USB:</span>
-                <span className={`font-bold font-mono ${arduinoConnected ? 'text-emerald-400' : 'text-zinc-500'}`}>
+                <span className={`font-bold font-mono text-[11px] ${arduinoConnected ? 'text-emerald-400' : 'text-zinc-500'}`}>
                   {arduinoConnected ? 'Conectado a 9600 Bd' : 'Sin conexión USB'}
                 </span>
               </div>
             </div>
 
             <div className="text-[11px] text-zinc-300 bg-zinc-900/90 p-2.5 rounded-xl border border-zinc-800/80 flex items-center justify-between">
-              <span>Control Sincronizado:</span>
-              <span className="text-emerald-400 font-semibold">Web ('T') + 2x LDR + 3D</span>
+              <span>Comandos Serie:</span>
+              <span className="text-sky-400 font-mono font-semibold">'E' Entrada · 'S' Salida</span>
             </div>
           </div>
 
           <div className="text-[11px] text-zinc-500 flex items-center justify-between pt-2 border-t border-zinc-900">
-            <span>iotAURA Maqueta Óptica</span>
+            <span>iotAURA 2 Servos + 2 LDRs</span>
             <span className="text-emerald-500 font-bold">● En Línea</span>
           </div>
         </div>
 
-        {/* Exit Barrier Gate */}
-        <div className="game-card p-5 sm:p-6 bg-white dark:bg-[#13141a] flex flex-col justify-between space-y-4 border border-zinc-200 dark:border-zinc-800">
+        {/* Barrera 2 (Servomotor Salida Pin 9) */}
+        <div className="game-card p-5 sm:p-6 bg-white dark:bg-[#13141a] flex flex-col justify-between space-y-4 border-2 border-purple-500/40 dark:border-purple-500/30 shadow-lg rounded-3xl">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className={`w-9 h-9 rounded-xl flex items-center justify-center font-display font-black border transition-all ${
+              <div className={`w-11 h-11 rounded-2xl flex items-center justify-center font-display font-black border transition-all ${
                 barriers.exit?.status === 'open'
-                  ? 'bg-emerald-500 text-white border-emerald-600 animate-pulse shadow-md'
+                  ? 'bg-emerald-500 text-white border-emerald-600 animate-pulse shadow-lg shadow-emerald-500/30 scale-105'
                   : 'bg-zinc-100 dark:bg-zinc-800 text-zinc-700 dark:text-zinc-200 border-zinc-200 dark:border-zinc-700'
               }`}>
-                <ArrowLeft className="w-4 h-4" />
+                <ArrowLeft className="w-5 h-5" />
               </div>
               <div>
-                <h4 className="text-sm font-bold text-zinc-900 dark:text-zinc-100">
-                  Barrera de Salida
-                </h4>
-                <p className="text-[11px] text-zinc-500">Servomotor SG90 (Pin 10)</p>
+                <div className="flex items-center gap-1.5 flex-wrap">
+                  <h4 className="text-base font-bold text-zinc-900 dark:text-white">
+                    Barrera 2 (Salida)
+                  </h4>
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-purple-100 text-purple-800 dark:bg-purple-950 dark:text-purple-300 border border-purple-200 dark:border-purple-800">
+                    Pin 9 PWM
+                  </span>
+                  <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800">
+                    Servo SG90 Físico
+                  </span>
+                </div>
+                <p className="text-[11px] text-zinc-500 dark:text-zinc-400">
+                  Servomotor SG90 conectado en Pin 9 (PWM)
+                </p>
               </div>
             </div>
 
-            <span className={`px-2.5 py-1 rounded-full text-xs font-semibold ${
+            <span className={`px-3.5 py-1.5 rounded-full text-xs font-bold transition-all ${
               barriers.exit?.status === 'open' 
-                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300' 
-                : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300'
+                ? 'bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-400 shadow-sm animate-pulse' 
+                : 'bg-zinc-100 text-zinc-700 dark:bg-zinc-800 dark:text-zinc-300 border border-zinc-300 dark:border-zinc-700'
             }`}>
-              {barriers.exit?.status === 'open' ? 'Abierta (90°)' : 'Cerrada (0°)'}
+              {barriers.exit?.status === 'open' ? '▲ ABIERTA (90°)' : '▼ CERRADA (0°)'}
+            </span>
+          </div>
+
+          {/* Detección / Control Badge */}
+          <div className="flex items-center justify-between px-3 py-1.5 bg-purple-500/10 dark:bg-purple-500/5 rounded-xl border border-purple-500/20 text-[11px]">
+            <span className="flex items-center gap-1.5 font-semibold text-purple-700 dark:text-purple-400">
+              <Sliders className="w-3.5 h-3.5" /> Control Serial Hardware:
+            </span>
+            <span className="text-zinc-600 dark:text-zinc-300 font-mono text-[10px]">
+              Comando Web &quot;S&quot; (Pin 9)
             </span>
           </div>
 
           {/* Visual Barrier Arm */}
-          <div className="h-16 bg-zinc-100 dark:bg-zinc-900 rounded-xl p-3 border border-zinc-200 dark:border-zinc-800 relative overflow-hidden flex items-center">
-            <div className="w-6 h-10 bg-amber-500 rounded-md border border-zinc-900 z-10 flex items-center justify-center">
-              <div className="w-2 h-2 rounded-full bg-zinc-900"></div>
+          <div className="h-20 bg-zinc-100 dark:bg-zinc-900 rounded-2xl p-3 border border-zinc-200 dark:border-zinc-800 relative overflow-hidden flex items-center">
+            <div className="w-7 h-12 bg-amber-500 rounded-lg border-2 border-zinc-900 z-10 flex items-center justify-center shadow-md">
+              <div className="w-3 h-3 rounded-full bg-zinc-900"></div>
             </div>
             <div 
-              className="h-3 flex-1 rounded-r-md border border-zinc-900 ml-1 origin-left transition-transform duration-500 shadow-md flex"
+              className="h-4 flex-1 rounded-r-lg border-2 border-zinc-900 ml-1 origin-left transition-transform duration-700 shadow-md flex"
               style={{
-                transform: barriers.exit?.status === 'open' ? 'rotate(-65deg) translateY(-10px)' : 'rotate(0deg)',
-                backgroundImage: 'repeating-linear-gradient(45deg, #ef4444, #ef4444 12px, #ffffff 12px, #ffffff 24px)'
+                transform: barriers.exit?.status === 'open' ? 'rotate(-65deg) translateY(-14px)' : 'rotate(0deg)',
+                backgroundImage: 'repeating-linear-gradient(45deg, #ef4444, #ef4444 14px, #ffffff 14px, #ffffff 28px)'
               }}
             ></div>
+            <span className="absolute right-3 text-[10px] font-mono text-zinc-400 select-none">
+              {barriers.exit?.status === 'open' ? '90° Paso Libre' : '0° Barrera Abajo'}
+            </span>
           </div>
 
-          {/* Direct Open / Close Controls */}
-          <div className="space-y-2">
+          {/* Botón Principal Prominente: Toggle 'S' */}
+          <div className="space-y-2.5">
+            <button
+              onClick={() => onToggleBarrier('exit')}
+              className={`w-full py-3.5 px-4 rounded-2xl text-sm font-black transition-all shadow-md active:scale-95 flex items-center justify-center gap-2 ${
+                barriers.exit?.status === 'open'
+                  ? 'bg-amber-600 hover:bg-amber-500 text-white shadow-amber-500/20'
+                  : 'bg-purple-600 hover:bg-purple-500 text-white shadow-purple-500/25'
+              }`}
+            >
+              <Sliders className="w-4 h-4" />
+              <span>
+                {barriers.exit?.status === 'open' ? '▼ Cerrar Salida (Enviar "S")' : '▲ Abrir Salida (Enviar "S")'}
+              </span>
+            </button>
+
+            {/* Direct Open / Close Controls */}
             <div className="grid grid-cols-2 gap-2">
               <button
                 onClick={() => handleOpenGate('exit')}
-                className={`py-2 px-3 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 ${
+                className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border ${
                   barriers.exit?.status === 'open'
-                    ? 'bg-emerald-700 text-white opacity-60 cursor-default'
-                    : 'bg-emerald-600 hover:bg-emerald-500 active:scale-95 text-white'
+                    ? 'bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border-emerald-300 dark:border-emerald-800'
+                    : 'bg-zinc-50 dark:bg-zinc-800/60 hover:bg-emerald-50 dark:hover:bg-emerald-950/30 text-zinc-700 dark:text-zinc-200 border-zinc-200 dark:border-zinc-700'
                 }`}
+                title="Abrir a 90°"
               >
-                <span>▲ Abrir (90°)</span>
+                ▲ Abrir (90°)
               </button>
 
               <button
                 onClick={() => handleCloseGate('exit')}
-                className={`py-2 px-3 rounded-xl text-xs font-bold transition-all shadow-sm flex items-center justify-center gap-1.5 ${
+                className={`py-2 px-3 rounded-xl text-xs font-bold transition-all border ${
                   barriers.exit?.status === 'closed'
-                    ? 'bg-zinc-300 dark:bg-zinc-800 text-zinc-500 opacity-60 cursor-default'
-                    : 'bg-red-600 hover:bg-red-500 active:scale-95 text-white'
+                    ? 'bg-red-50 dark:bg-red-950/40 text-red-700 dark:text-red-300 border-red-300 dark:border-red-800'
+                    : 'bg-zinc-50 dark:bg-zinc-800/60 hover:bg-red-50 dark:hover:bg-red-950/30 text-zinc-700 dark:text-zinc-200 border-zinc-200 dark:border-zinc-700'
                 }`}
+                title="Cerrar a 0°"
               >
-                <span>▼ Cerrar (0°)</span>
+                ▼ Cerrar (0°)
               </button>
             </div>
-
-            <button
-              onClick={() => onToggleBarrier('exit')}
-              className="w-full py-1.5 px-3 rounded-xl text-[11px] font-semibold bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-800 dark:hover:bg-zinc-700 text-zinc-700 dark:text-zinc-300 transition-colors"
-            >
-              {barriers.exit?.status === 'open' ? 'Alternar a Cerrar' : 'Alternar a Abrir'}
-            </button>
           </div>
         </div>
       </div>
 
-            {/* Banner Informativo de los Fotorreceptores LDR */}
+      {/* Banner Informativo de los Fotorreceptores LDR & Servomotores */}
       <div className="game-card p-5 bg-gradient-to-r from-amber-500/10 via-blue-500/10 to-emerald-500/10 border border-amber-500/20 rounded-3xl flex flex-col md:flex-row items-center justify-between gap-4 shadow-sm">
         <div className="flex items-center gap-4">
           <div className="w-12 h-12 rounded-2xl bg-amber-500/20 text-amber-500 flex items-center justify-center border border-amber-500/30 flex-shrink-0 shadow-inner">
@@ -523,14 +556,15 @@ export default function MaquetaView({
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h4 className="font-bold text-zinc-900 dark:text-white text-sm">
-                Control Óptico Inteligente: 2x Fotorreceptores LDR Calibrados
+                Control IoT Completo: 2x Servos SG90 (Pines 10 y 9) + 2x LDR Ópticos (Pines A0 y A1)
               </h4>
               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800 dark:bg-amber-950 dark:text-amber-300 border border-amber-300">
-                Pines A0 y A1 (Vcc 4, 5 / GND 6)
+                Calibración Promediada (8 lecturas)
               </span>
             </div>
             <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 max-w-3xl leading-relaxed">
-              El firmware calibra la luz ambiente al iniciar (&quot;SISTEMA LISTO&quot;). Cuando un vehículo genera sombra sobre cualquiera de los sensores (Δ &gt; 60), la barrera se eleva a 90°. Al despejarse ambos fotosensores, se activa un temporizador de seguridad de 1.5s antes del cierre automático a 0°. El botón web envía &quot;T&quot; para conmutación manual.
+              <strong>Entrada:</strong> El LDR en Pin A0 detecta la sombra vehicular y abre automáticamente la Barrera de Entrada (Pin 10); tras quedar libre, temporiza 1.5s antes del cierre automático. Comandos web: <strong>&apos;E&apos;</strong> para conmutar entrada.<br />
+              <strong>Salida &amp; Plaza E-01:</strong> La Barrera de Salida (Pin 9) se conmuta con <strong>&apos;S&apos;</strong>. El LDR en Pin A1 monitorea en tiempo real la ocupación física del <strong>Puesto 1 (Plaza E-01)</strong> con anti-rebote eléctrico.
             </p>
           </div>
         </div>
@@ -542,7 +576,7 @@ export default function MaquetaView({
         </div>
       </div>
 
-{/* 6 Parking Slots */}
+      {/* 6 Parking Slots */}
       <div className="space-y-4">
         <div className="flex items-center justify-between px-1">
           <div>
@@ -580,11 +614,17 @@ export default function MaquetaView({
               >
                 {/* Header */}
                 <div className="p-4 border-b border-zinc-100 dark:border-zinc-800 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-display text-xl font-black text-zinc-950 dark:text-white">
                       {slot.code}
                     </span>
                     {getSlotTypeBadge(slot.type)}
+                    {(slot.id === 1 || slot.code === 'E-01') && (
+                      <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-900 dark:bg-amber-950 dark:text-amber-200 border border-amber-400 flex items-center gap-1 shadow-xs">
+                        <Sun className="w-3 h-3 text-amber-600 animate-spin-slow" />
+                        LDR Pin A1 (Físico)
+                      </span>
+                    )}
                   </div>
 
                   <div className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full bg-zinc-100 dark:bg-zinc-800 border border-zinc-200 dark:border-zinc-700/60">
@@ -651,9 +691,21 @@ export default function MaquetaView({
                 {/* Presence Sensor Gauge */}
                 <div className="p-3 bg-zinc-50 dark:bg-zinc-900/60 border-b border-zinc-100 dark:border-zinc-800 space-y-1">
                   <div className="flex items-center justify-between text-xs">
-                    <span className="text-zinc-500">Distancia HC-SR04:</span>
-                    <span className={`font-semibold font-mono ${slot.distanceCm < 10 ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
-                      {slot.distanceCm ? `${Number(slot.distanceCm).toFixed(1)} cm` : '50.0 cm'} ({slot.distanceCm < 10 ? 'Vehículo presente' : 'Espacio libre'})
+                    <span className="text-zinc-500 flex items-center gap-1">
+                      {(slot.id === 1 || slot.code === 'E-01') ? (
+                        <>
+                          <Sun className="w-3.5 h-3.5 text-amber-500" /> Sensor Óptico LDR (Pin A1):
+                        </>
+                      ) : (
+                        'Distancia HC-SR04:'
+                      )}
+                    </span>
+                    <span className={`font-semibold font-mono ${slot.distanceCm < 10 || isOccupied ? 'text-red-500' : 'text-emerald-600 dark:text-emerald-400'}`}>
+                      {(slot.id === 1 || slot.code === 'E-01') ? (
+                        isOccupied ? '● Vehículo presente (Sombra A1)' : '○ Puesto libre (Luz A1)'
+                      ) : (
+                        `${slot.distanceCm ? `${Number(slot.distanceCm).toFixed(1)} cm` : '50.0 cm'} (${slot.distanceCm < 10 ? 'Vehículo presente' : 'Espacio libre'})`
+                      )}
                     </span>
                   </div>
 

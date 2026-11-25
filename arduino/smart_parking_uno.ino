@@ -9,132 +9,164 @@
     - Felipe Labarca
     - Agustín Cañas
 
-  HARDWARE Y CONEXIONES (BARRERA 1 CON FOTORRECEPTORES LDR):
-    - Servomotor Barrera 1: Pin 10 (PWM)
-    - Fotorreceptor LDR 1 (Aproximación/Entrada):
-        * Señal analógica: Pin A0
-        * Alimentación virtual Vcc: Pin Digital 4 (HIGH)
-    - Fotorreceptor LDR 2 (Paso/Salida):
-        * Señal analógica: Pin A1
-        * Alimentación virtual Vcc: Pin Digital 5 (HIGH)
-        * Tierra virtual GND: Pin Digital 6 (LOW)
-    - Comunicación Serie USB: 9600 baudios (Web Serial API)
-    - Funcionamiento:
-        * Calibración automática de luz ambiental en setup() (5 muestras promedio).
-        * Detección por sombra: si lectura > luzBase + 60, abre barrera automáticamente.
-        * Cierre automático con retardo de 1.5s al quedar ambos sensores libres.
-        * Control manual por Web Serial enviando carácter 'T' o 't'.
-        * Notificaciones: "SISTEMA LISTO", "ESTADO: ABIERTA", "ESTADO: CERRADA".
+  HARDWARE Y CONEXIONES:
+    1. BARRERA DE ENTRADA:
+       - Servomotor Entrada (SG90): Pin 10 (PWM)
+       - Fotorreceptor LDR Entrada: Pin A0 (Apertura automática por sombra)
+    2. BARRERA DE SALIDA:
+       - Servomotor Salida (SG90): Pin 9 (PWM)
+    3. PUESTO DE ESTACIONAMIENTO 1 (Plaza E-01):
+       - Fotorreceptor LDR Puesto 1: Pin A1 (Monitoreo de ocupación vehicular)
+    4. COMUNICACIÓN USB SERIE:
+       - 9600 Baudios (Web Serial API)
+       - Comando 'E' / 'e': Conmuta Barrera de Entrada (Pin 10)
+       - Comando 'S' / 's': Conmuta Barrera de Salida (Pin 9)
+       - Telemetría de estado:
+           * "SISTEMA LISTO"
+           * "ENTRADA: ABIERTA" / "ENTRADA: CERRADA"
+           * "SALIDA: ABIERTA"  / "SALIDA: CERRADA"
+           * "PUESTO_1: OCUPADO" / "PUESTO_1: LIBRE"
   =============================================================================
 */
 
 #include <Servo.h>
 
-Servo barrera;
+Servo servoEntrada;
+Servo servoSalida;
 
-// Pines de los componentes
-const int pinServo = 10;
-const int ldr1Pin = A0;
-const int ldr2Pin = A1;
+// Pines de hardware
+const int pinServoEntrada = 10;
+const int pinServoSalida  = 9;
+const int ldrEntradaPin   = A0;
+const int ldrPuestoPin    = A1;
 
-// Pines virtuales de energía para los LDR
-const int ldr1Vcc = 4;
-const int ldr2Vcc = 5;
-const int ldr2Gnd = 6;
+// Estados del sistema
+bool entradaAbierta = false;
+bool entradaManual  = false;
+bool salidaAbierta  = false;
+bool puestoOcupado  = false;
 
-bool barreraAbierta = false;
-bool abiertaManual = false;
 int velocidad = 20;
 
-// Variables para calibración automática de luz
-int luzBase1 = 0;
-int luzBase2 = 0;
-int margenCambio = 60; // Sensibilidad ajustada para luz de interior
+// Calibración automática de luz
+int luzBaseEntrada = 0;
+int luzBasePuesto  = 0;
+int margenCambio   = 65; // Margen alto para evitar falsas alarmas
 
 void setup() {
   Serial.begin(9600);
-  
-  // Activamos energía virtual para los módulos LDR
-  pinMode(ldr1Vcc, OUTPUT);
-  digitalWrite(ldr1Vcc, HIGH);
-  
-  pinMode(ldr2Vcc, OUTPUT);
-  digitalWrite(ldr2Vcc, HIGH);
-  
-  pinMode(ldr2Gnd, OUTPUT);
-  digitalWrite(ldr2Gnd, LOW);
 
-  barrera.attach(pinServo);
-  barrera.write(0);
+  servoEntrada.attach(pinServoEntrada);
+  servoSalida.attach(pinServoSalida);
 
-  // Calibración automática de luz ambiente (no tapes los sensores aquí)
-  delay(500);
-  long suma1 = 0;
-  long suma2 = 0;
-  for (int i = 0; i < 5; i++) {
-    suma1 += analogRead(ldr1Pin);
-    suma2 += analogRead(ldr2Pin);
-    delay(50);
-  }
-  luzBase1 = suma1 / 5;
-  luzBase2 = suma2 / 5;
+  servoEntrada.write(0);
+  servoSalida.write(0);
+
+  // Calibración inicial (no tapar los sensores durante 1 segundo)
+  delay(800);
+  luzBaseEntrada = leerSensorPromedio(ldrEntradaPin);
+  luzBasePuesto  = leerSensorPromedio(ldrPuestoPin);
 
   Serial.println("SISTEMA LISTO");
 }
 
 void loop() {
-  int lectura1 = analogRead(ldr1Pin);
-  int lectura2 = analogRead(ldr2Pin);
+  int lecturaEntrada = leerSensorPromedio(ldrEntradaPin);
+  int lecturaPuesto  = leerSensorPromedio(ldrPuestoPin);
 
-  bool sensor1Tapado = abs(lectura1 - luzBase1) > margenCambio;
-  bool sensor2Tapado = abs(lectura2 - luzBase2) > margenCambio;
-  bool autoDetectado = (sensor1Tapado || sensor2Tapado);
+  bool autoEnEntrada = abs(lecturaEntrada - luzBaseEntrada) > margenCambio;
+  bool autoEnPuesto  = abs(lecturaPuesto  - luzBasePuesto)  > margenCambio;
 
-  // 1. Control manual desde el dashboard web
+  // 1. Comandos desde página web o Monitor Serie
   if (Serial.available() > 0) {
     char comando = Serial.read();
-    if (comando == 'T' || comando == 't') {
-      if (!barreraAbierta) {
-        abrirBarrera();
-        abiertaManual = true;
+    
+    if (comando == 'E' || comando == 'e') {
+      if (!entradaAbierta) {
+        moverBarrera(servoEntrada, 0, 90);
+        entradaAbierta = true;
+        entradaManual = true;
+        Serial.println("ENTRADA: ABIERTA");
       } else {
-        cerrarBarrera();
-        abiertaManual = false;
+        moverBarrera(servoEntrada, 90, 0);
+        entradaAbierta = false;
+        entradaManual = false;
+        Serial.println("ENTRADA: CERRADA");
+      }
+    }
+    
+    if (comando == 'S' || comando == 's') {
+      if (!salidaAbierta) {
+        moverBarrera(servoSalida, 0, 90);
+        salidaAbierta = true;
+        Serial.println("SALIDA: ABIERTA");
+      } else {
+        moverBarrera(servoSalida, 90, 0);
+        salidaAbierta = false;
+        Serial.println("SALIDA: CERRADA");
       }
     }
   }
 
-  // 2. Control automático con los sensores LDR
-  if (autoDetectado && !barreraAbierta) {
-    abrirBarrera();
-    abiertaManual = false;
+  // 2. Automatización de barrera de ENTRADA (LDR 1 en A0)
+  if (autoEnEntrada && !entradaAbierta) {
+    delay(150); // Confirma que sea un auto real y no un parpadeo de luz
+    if (abs(leerSensorPromedio(ldrEntradaPin) - luzBaseEntrada) > margenCambio) {
+      moverBarrera(servoEntrada, 0, 90);
+      entradaAbierta = true;
+      entradaManual = false;
+      Serial.println("ENTRADA: ABIERTA");
+    }
   } 
-  else if (!autoDetectado && barreraAbierta && !abiertaManual) {
+  else if (!autoEnEntrada && entradaAbierta && !entradaManual) {
     delay(1500);
-    bool sigueLibre1 = abs(analogRead(ldr1Pin) - luzBase1) <= margenCambio;
-    bool sigueLibre2 = abs(analogRead(ldr2Pin) - luzBase2) <= margenCambio;
-    if (sigueLibre1 && sigueLibre2) {
-      cerrarBarrera();
+    if (abs(leerSensorPromedio(ldrEntradaPin) - luzBaseEntrada) <= margenCambio) {
+      moverBarrera(servoEntrada, 90, 0);
+      entradaAbierta = false;
+      Serial.println("ENTRADA: CERRADA");
+    }
+  }
+
+  // 3. Monitoreo de PUESTO 1 (LDR 2 en A1) con confirmación anti-rebote
+  if (autoEnPuesto && !puestoOcupado) {
+    delay(250);
+    if (abs(leerSensorPromedio(ldrPuestoPin) - luzBasePuesto) > margenCambio) {
+      puestoOcupado = true;
+      Serial.println("PUESTO_1: OCUPADO");
+    }
+  } 
+  else if (!autoEnPuesto && puestoOcupado) {
+    delay(250);
+    if (abs(leerSensorPromedio(ldrPuestoPin) - luzBasePuesto) <= margenCambio) {
+      puestoOcupado = false;
+      Serial.println("PUESTO_1: LIBRE");
     }
   }
 
   delay(50);
 }
 
-void abrirBarrera() {
-  for (int pos = 0; pos <= 90; pos += 1) {
-    barrera.write(pos);
-    delay(velocidad);
+// Toma 8 lecturas rápidas y saca el promedio para filtrar picos eléctricos
+int leerSensorPromedio(int pin) {
+  long suma = 0;
+  for (int i = 0; i < 8; i++) {
+    suma += analogRead(pin);
+    delay(2);
   }
-  barreraAbierta = true;
-  Serial.println("ESTADO: ABIERTA");
+  return suma / 8;
 }
 
-void cerrarBarrera() {
-  for (int pos = 90; pos >= 0; pos -= 1) {
-    barrera.write(pos);
-    delay(velocidad);
+void moverBarrera(Servo &motor, int inicio, int fin) {
+  if (inicio < fin) {
+    for (int pos = inicio; pos <= fin; pos++) {
+      motor.write(pos);
+      delay(velocidad);
+    }
+  } else {
+    for (int pos = inicio; pos >= fin; pos--) {
+      motor.write(pos);
+      delay(velocidad);
+    }
   }
-  barreraAbierta = false;
-  Serial.println("ESTADO: CERRADA");
+  delay(300); // Pausa para estabilizar el voltaje tras mover el servo
 }
