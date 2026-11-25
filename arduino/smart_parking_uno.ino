@@ -9,41 +9,43 @@
     - Felipe Labarca
     - Agustín Cañas
 
-  HARDWARE Y CONEXIONES:
-    1. BARRERA DE ENTRADA:
+  HARDWARE Y CONEXIONES (CONFIGURACIÓN OPTIMIZADA DE POTENCIA USB):
+    1. BARRERA DE ENTRADA (FÍSICA):
        - Servomotor Entrada (SG90): Pin 10 (PWM)
-       - Fotorreceptor LDR Entrada: Pin A0 (Apertura automática por sombra)
-    2. BARRERA DE SALIDA:
-       - Servomotor Salida (SG90): Pin 9 (PWM)
-    3. PUESTO DE ESTACIONAMIENTO 1 (Plaza E-01):
-       - Fotorreceptor LDR Puesto 1: Pin A1 (Monitoreo de ocupación vehicular)
+       - Fotorreceptor LDR Entrada: Pin A0 (Apertura automática por sombra vehicular)
+    2. PUESTO DE ESTACIONAMIENTO 1 (Plaza E-01 FÍSICA):
+       - Fotorreceptor LDR Puesto 1: Pin A1 (Detección de presencia física de vehículo)
+       - LED Indicador Verde (Libre): Pin Digital 7
+       - LED Indicador Rojo (Ocupado): Pin Digital 8
+    3. NOTA DE DISEÑO ELÉCTRICO / ARQUITECTURA:
+       - Se utiliza 1 servomotor SG90 en entrada para respetar el límite de 500mA
+         del estándar USB 2.0 del PC, evitando caídas de voltaje (brownout resets).
+       - La barrera de salida se opera como gemelo virtual/software en la nube.
     4. COMUNICACIÓN USB SERIE:
        - 9600 Baudios (Web Serial API)
        - Comando 'E' / 'e': Conmuta Barrera de Entrada (Pin 10)
-       - Comando 'S' / 's': Conmuta Barrera de Salida (Pin 9)
-       - Telemetría de estado:
+       - Telemetría:
            * "SISTEMA LISTO"
            * "ENTRADA: ABIERTA" / "ENTRADA: CERRADA"
-           * "SALIDA: ABIERTA"  / "SALIDA: CERRADA"
-           * "PUESTO_1: OCUPADO" / "PUESTO_1: LIBRE"
+           * "PUESTO_1: OCUPADO" (Enciende LED Rojo Pin 8, apaga LED Verde Pin 7)
+           * "PUESTO_1: LIBRE"   (Enciende LED Verde Pin 7, apaga LED Rojo Pin 8)
   =============================================================================
 */
 
 #include <Servo.h>
 
 Servo servoEntrada;
-Servo servoSalida;
 
 // Pines de hardware
 const int pinServoEntrada = 10;
-const int pinServoSalida  = 9;
 const int ldrEntradaPin   = A0;
 const int ldrPuestoPin    = A1;
+const int pinLedVerde     = 7;
+const int pinLedRojo      = 8;
 
 // Estados del sistema
 bool entradaAbierta = false;
 bool entradaManual  = false;
-bool salidaAbierta  = false;
 bool puestoOcupado  = false;
 
 int velocidad = 20;
@@ -51,16 +53,20 @@ int velocidad = 20;
 // Calibración automática de luz
 int luzBaseEntrada = 0;
 int luzBasePuesto  = 0;
-int margenCambio   = 65; // Margen alto para evitar falsas alarmas
+int margenCambio   = 65;
 
 void setup() {
   Serial.begin(9600);
 
-  servoEntrada.attach(pinServoEntrada);
-  servoSalida.attach(pinServoSalida);
+  pinMode(pinLedVerde, OUTPUT);
+  pinMode(pinLedRojo, OUTPUT);
 
+  // Inicia marcando puesto libre (verde encendido, rojo apagado)
+  digitalWrite(pinLedVerde, HIGH);
+  digitalWrite(pinLedRojo, LOW);
+
+  servoEntrada.attach(pinServoEntrada);
   servoEntrada.write(0);
-  servoSalida.write(0);
 
   // Calibración inicial (no tapar los sensores durante 1 segundo)
   delay(800);
@@ -94,23 +100,11 @@ void loop() {
         Serial.println("ENTRADA: CERRADA");
       }
     }
-    
-    if (comando == 'S' || comando == 's') {
-      if (!salidaAbierta) {
-        moverBarrera(servoSalida, 0, 90);
-        salidaAbierta = true;
-        Serial.println("SALIDA: ABIERTA");
-      } else {
-        moverBarrera(servoSalida, 90, 0);
-        salidaAbierta = false;
-        Serial.println("SALIDA: CERRADA");
-      }
-    }
   }
 
   // 2. Automatización de barrera de ENTRADA (LDR 1 en A0)
   if (autoEnEntrada && !entradaAbierta) {
-    delay(150); // Confirma que sea un auto real y no un parpadeo de luz
+    delay(150);
     if (abs(leerSensorPromedio(ldrEntradaPin) - luzBaseEntrada) > margenCambio) {
       moverBarrera(servoEntrada, 0, 90);
       entradaAbierta = true;
@@ -127,11 +121,13 @@ void loop() {
     }
   }
 
-  // 3. Monitoreo de PUESTO 1 (LDR 2 en A1) con confirmación anti-rebote
+  // 3. Monitoreo de PUESTO 1 (LDR 2 en A1) y control del LED bicolor
   if (autoEnPuesto && !puestoOcupado) {
     delay(250);
     if (abs(leerSensorPromedio(ldrPuestoPin) - luzBasePuesto) > margenCambio) {
       puestoOcupado = true;
+      digitalWrite(pinLedVerde, LOW);
+      digitalWrite(pinLedRojo, HIGH);
       Serial.println("PUESTO_1: OCUPADO");
     }
   } 
@@ -139,6 +135,8 @@ void loop() {
     delay(250);
     if (abs(leerSensorPromedio(ldrPuestoPin) - luzBasePuesto) <= margenCambio) {
       puestoOcupado = false;
+      digitalWrite(pinLedVerde, HIGH);
+      digitalWrite(pinLedRojo, LOW);
       Serial.println("PUESTO_1: LIBRE");
     }
   }
@@ -146,7 +144,6 @@ void loop() {
   delay(50);
 }
 
-// Toma 8 lecturas rápidas y saca el promedio para filtrar picos eléctricos
 int leerSensorPromedio(int pin) {
   long suma = 0;
   for (int i = 0; i < 8; i++) {
@@ -168,5 +165,5 @@ void moverBarrera(Servo &motor, int inicio, int fin) {
       delay(velocidad);
     }
   }
-  delay(300); // Pausa para estabilizar el voltaje tras mover el servo
+  delay(300);
 }
