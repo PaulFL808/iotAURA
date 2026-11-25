@@ -389,9 +389,13 @@ export default function App() {
       
       const angle = targetStatus === 'open' ? 90 : 0;
 
-      // 1. Si Arduino UNO está conectado por Web Serial, enviar 'E' si es la Barrera de Entrada (Pin 10)
-      if (arduinoConnected && gate === 'entry') {
-        await arduinoSerial.writeChar('E');
+      // 1. Si Arduino UNO está conectado por Web Serial, enviar 'E' (Entrada Pin 10) o 'S' (Salida Pin 9)
+      if (arduinoConnected) {
+        if (gate === 'entry') {
+          await arduinoSerial.writeChar('E');
+        } else {
+          await arduinoSerial.writeChar('S');
+        }
       }
 
       // 2. Actualizar en Firebase Firestore (sincroniza con cualquier otra pantalla o dispositivo)
@@ -409,8 +413,8 @@ export default function App() {
         }
       }));
 
-      const isPhysical = gate === 'entry' && arduinoConnected;
-      showToast(`Barrera de ${gate === 'entry' ? 'Entrada (Pin 10 Físico)' : 'Salida (Cloud)'} ${targetStatus === 'open' ? 'levantada a 90°' : 'cerrada a 0°'}${isPhysical ? ' (Comando "E" enviado al Arduino)' : ''}`, 'info');
+      const cmdChar = gate === 'entry' ? 'E' : 'S';
+      showToast(`Barrera de ${gate === 'entry' ? 'Entrada (Pin 10)' : 'Salida (Pin 9)'} ${targetStatus === 'open' ? 'abierta (105°)' : 'cerrada (15°)'}${arduinoConnected ? ` (Comando "${cmdChar}" enviado al Arduino)` : ''}`, 'info');
     } catch (err) {
       showToast(`Error al controlar barrera: ${err.message}`, 'error');
     }
