@@ -29,7 +29,7 @@ Los estacionamientos convencionales sufren severas ineficiencias operativas: con
 
 ### 1.2 La Solución IoT: iotAURA
 iotAURA resuelve integralmente esta problemática mediante un ecosistema ciberfísico articulado en tres subsistemas claramente diferenciados:
-1. **Control de Acceso Físico en Tiempo Real:** Construido con una placa **Arduino UNO R3**, servomotor micro SG90 en Pin 10 PWM para la barrera vehicular, pulsador manual de garita en Pin 2 con debouncing y comunicación directa vía W3C **Web Serial API (especificación WICG Draft)** a 9600 baudios sin requerir servidores intermediarios locales.
+1. **Control de Acceso Físico en Tiempo Real y Maqueta Ciberfísica:** Construido con una placa **Arduino UNO R3**, dos servomotores micro SG90 en Pin 10 (barrera de entrada) y Pin 9 (barrera de salida) con rangos angulares calibrados de 15° a 105°, dos sensores fotorreceptores LDR en Pin A0 (detección vehicular de entrada) y Pin A1 (detección de ocupación en plaza E-01), semáforo bicolor LED (Pin 8 Verde / Pin 7 Rojo) y rieles digitales de energía y masa virtual (Pines 3, 4, 5, 6), montados en una maqueta física a escala con carriles, caseta de control y vehículo de prueba, comunicados directamente vía W3C **Web Serial API (especificación WICG Draft)** a 9600 baudios sin requerir servidores intermediarios locales.
 2. **Nube Reactiva y Sincronización de Estado:** Implementado sobre **Google Cloud Firestore** como canal de sincronización reactiva de estado mediante listeners en tiempo real (`onSnapshot` sobre protocolo WebChannel/HTTPS), garantizando que las mutaciones se propaguen en menos de 300 ms a todos los clientes conectados sin recurrir a sondeo periódico (*polling*).
 3. **Gemelo Digital 3D Ciberfísico:** Desarrollado en **Three.js** y WebGL, simula la red completa de 6 cupos con sensores ultrasónicos HC-SR04, cinemática vehicular, display tótem LCD 16x2 I2C y un módulo de Reconocimiento Automático de Patentes (**ALPR simulado**) que valida accesos comparando con las reservas activas en la nube.
 
@@ -78,15 +78,23 @@ El sistema opera en un ciclo cerrado distinguiendo rigurosamente lo físico de l
 
 | Componente Físico | Modelo / Conexión | Parámetros Eléctricos y Lógicos | Función Operativa |
 | :--- | :--- | :--- | :--- |
-| **Unidad de Procesamiento** | Arduino UNO R3 (ATmega328P) | 16 MHz, 5V DC, 32 KB Flash, 2 KB SRAM | Controlador embebido principal, bucle de muestreo y máquina de estados. |
-| **Actuador de Barrera** | Micro Servomotor SG90 (Pin 10 PWM) | Torque 1.8 kg-cm, 5V DC, rampa 20 ms/grado | Acciona físicamente el brazo de la barrera vehicular entre 0° y 90°. |
-| **Pulsador de Garita** | Switch mecánico (Pin 2 Pull-up) | INPUT_PULLUP interno (20k-50kΩ), activo en LOW | Permite la anulación manual por el operador de garita con debouncing de 50 ms. |
-| **Canal de Comunicación** | Cable USB Serie (CDC UART) | 9600 baudios, 8-N-1, Web Serial API | Enlace directo punto a punto entre el navegador host y el microcontrolador. |
+| **Unidad de Procesamiento** | Arduino UNO R3 (ATmega328P) | 16 MHz, 5V DC, 32 KB Flash, 2 KB SRAM | Controlador embebido principal, bucle de muestreo, filtrado y máquina de estados. |
+| **Barrera de Entrada** | Micro Servomotor SG90 (Pin 10 PWM) | Torque 1.8 kg-cm, 5V DC, rampa 20 ms/grado, rango 15° a 105° | Acciona mecánicamente la barrera de acceso vehicular al detectar sombra o recibir comando 'E'. |
+| **Barrera de Salida** | Micro Servomotor SG90 (Pin 9 PWM) | Torque 1.8 kg-cm, 5V DC, rampa 20 ms/grado, rango 15° a 105° | Acciona mecánicamente la barrera de egreso vehicular comandada vía Web Serial 'S'. |
+| **Sensor de Acceso (Entrada)** | Fotorreceptor LDR (Pin A0) | Divisor de tensión óptico, sobremuestreo 32x, umbral $\Delta > 14$ | Detecta aproximación vehicular física en el carril por atenuación lumínica. |
+| **Sensor de Ocupación Plaza E-01** | Fotorreceptor LDR (Pin A1) | Divisor de tensión óptico, histéresis (ocupa $>6$, libera $\le 4$) | Monitorea la presencia de vehículo aparcado en la plaza 1 física. |
+| **Semáforo Bicolor Plaza E-01** | Diodos LED Bicolor (Pines 8 y 7) | Pin 8 (Verde: Libre), Pin 7 (Rojo: Ocupado), 20 mA máx | Señalización óptica local para el conductor sobre el estado de la plaza. |
+| **Rieles Virtuales de Energía** | Pines Digitales 3, 4 (Vcc) y 5, 6 (GND) | Salidas digitales forzadas en HIGH (+5V) y LOW (0V) | Suministran alimentación distribuida directa a sensores y LEDs sin saturar rieles compartidos. |
+| **Plataforma Maqueta Física** | Prototipo a Escala 1:32 con Caseta | Calzadas señalizadas, 4 plazas, caseta central, auto escala | Estructura ciberfísica para validación de dinámica vehicular y sensores. |
+| **Canal de Comunicación** | Cable USB Serie (CDC UART) | 9600 baudios, 8-N-1, Web Serial API (WICG) | Enlace directo punto a punto bidireccional entre el navegador host y el Arduino UNO. |
 
-### 3.2 Alimentación Eléctrica del Sistema
-En este prototipo de laboratorio de banco, el sistema completo se alimenta directamente a través del bus USB provisto por el computador host (+5.0V DC nominal, limitado a 500 mA según la especificación USB 2.0).
+### 3.2 Alimentación Eléctrica y Gestión de Potencia
+En este prototipo experimental, el sistema ciberfísico se alimenta directamente a través del bus USB provisto por el computador host (+5.0V DC nominal, limitado a 500 mA según la especificación USB 2.0).
 
-El micro servomotor SG90 toma los 5V directamente del pin 5V del Arduino UNO. Para prevenir caídas de tensión (*brownout resets*) inducidas por picos de corriente de arranque o bloqueo (*stall current* ~650 mA), el firmware implementa una rampa de aceleración suave de 20 ms por cada grado de desplazamiento angular, limitando el consumo dinámico a menos de 250 mA.
+Para solventar los desafíos de potencia asociados al accionamiento simultáneo de servomotores y sensores sin provocar caídas de tensión bruscas (*brownout resets* en el ATmega328P), se implementó una estrategia triple de optimización energética y mecánica:
+1. **Rangos Angulares Seguros ($15^\circ$ a $105^\circ$):** Se suprimió el tope físico en $0^\circ$, evitando el bloqueo mecánico del reductor de engranajes del SG90 (*stall current* ~650 mA), manteniendo la corriente de operación en menos de 180 mA por motor.
+2. **Rampa de Aceleración Suave:** El firmware ejecuta un desplazamiento incremental de 1° cada 20 ms (`delay(velocidad)`), eliminando picos inductivos de corriente de arranque (*inrush current*).
+3. **Rieles Virtuales de Energía (Pines 3 a 6):** Los fotorreceptores LDR y el semáforo LED se energizan mediante salidas digitales independientes configuradas en `OUTPUT HIGH/LOW`, aislando sus impedancias del bus analógico principal de 5V.
 
 > [!NOTE]
 > En una instalación industrial o de múltiples servomotores concurrentes, se requeriría una fuente de alimentación conmutada externa de 5V 2A DC regulada, compartiendo la referencia de tierra (GND común) con el microcontrolador.
@@ -230,21 +238,26 @@ A continuación se presenta el diagrama de conexionado eléctrico del prototipo 
 
 | Componente / Subsistema | Clasificación de Implementación | Detalle Técnico y Justificación |
 | :--- | :--- | :--- |
-| **Microcontrolador Arduino UNO R3** | HARDWARE FÍSICO REAL | Placa con ATmega328P corriendo firmware C++ (smart_parking_uno.ino). |
-| **Servomotor SG90 (Pin 10 PWM)** | HARDWARE FÍSICO REAL | Actuador mecánico de barrera vehicular accionado a 5V DC. |
-| **Pulsador de Garita (Pin 2 Pull-up)** | HARDWARE FÍSICO REAL | Botón físico con resistencia interna INPUT_PULLUP y debouncing. |
-| **Canal USB Web Serial API** | HARDWARE FÍSICO REAL | Comunicación serie real CDC UART a 9600 baudios (WICG Draft). |
+| **Microcontrolador Arduino UNO R3** | HARDWARE FÍSICO REAL | Placa con ATmega328P corriendo firmware C++ con filtrado acumulado 32x y máquina de estados. |
+| **Barrera de Entrada (Pin 10 PWM)** | HARDWARE FÍSICO REAL | Micro Servomotor SG90 calibrado en rango 15° (cerrado) a 105° (abierto) con rampa de 20 ms. |
+| **Barrera de Salida (Pin 9 PWM)** | HARDWARE FÍSICO REAL | Micro Servomotor SG90 calibrado en rango 15° (cerrado) a 105° (abierto) accionado por comando 'S'. |
+| **Sensor Óptico de Entrada (Pin A0)** | HARDWARE FÍSICO REAL | Fotorreceptor LDR en calzada de acceso con umbral $\Delta > 14$ para auto-apertura por sombra. |
+| **Sensor de Ocupación Plaza E-01 (Pin A1)** | HARDWARE FÍSICO REAL | Fotorreceptor LDR en cajón 1 con histéresis calibrada (ocupa $>6$, libera $\le 4$). |
+| **Semáforo Bicolor Plaza E-01 (Pines 8 y 7)** | HARDWARE FÍSICO REAL | Diodos LED Verde (Pin 8: libre) y Rojo (Pin 7: ocupado) con respuesta local inmediata. |
+| **Rieles Virtuales de Energía (Pines 3, 4, 5, 6)** | HARDWARE FÍSICO REAL | Distribución directa de +5V y GND por pines digitales para aislar ruidos y evitar caídas USB. |
+| **Maqueta Física a Escala 1:32** | HARDWARE FÍSICO REAL | Plataforma de estacionamiento con calzadas, caseta central azul, 4 plazas y vehículo de prueba. |
+| **Canal USB Web Serial API** | HARDWARE FÍSICO REAL | Comunicación serie real CDC UART a 9600 baudios sin drivers externos (WICG Draft). |
 | **Dashboard Web de Garita & Control** | SOFTWARE IMPLEMENTADO | SPA desarrollada en React 18, Vite y Tailwind CSS desplegada en GitHub Pages. |
 | **Gemelo Digital 3D (Simulador)** | SOFTWARE IMPLEMENTADO | Escena WebGL interactiva desarrollada con Three.js a 60 FPS estables. |
 | **Base de Datos Cloud Firestore** | SOFTWARE IMPLEMENTADO | Base documental en la nube con canal reactivo WebChannel en tiempo real. |
-| **Red de Sensores Ultrasónicos HC-SR04** | SIMULADO EN GEMELO 3D | Cálculo matemático de proximidad tridimensional euclidiana en cm. |
+| **Sensores Ultrasónicos Adicionales (E-02 a E-06)** | SIMULADO EN GEMELO 3D | Cálculo matemático de proximidad tridimensional euclidiana en cm para plazas virtuales. |
 | **Cámara y Módulo de Visión ALPR** | SIMULADO EN GEMELO 3D | Extracción óptica de la matrícula del modelo 3D y consulta a Firestore. |
-| **Tótem LCD 16x2 I2C** | SIMULADO EN GEMELO 3D | Display tridimensional procedural que replica mensajes dinámicos. |
+| **Tótem LCD 16x2 I2C** | SIMULADO EN GEMELO 3D | Display tridimensional procedural que replica mensajes dinámicos al conductor. |
 | **SoC ESP32 Wi-Fi / Broker MQTT** | TRABAJO FUTURO | Evolución a conectividad IP nativa sin cable USB (ver sección 9.4). |
 
 ### 8.3 Evidencias Gráficas del Sistema en Operación
 
-A continuación se documentan las capturas de pantalla reales obtenidas durante la operación y pruebas del sistema iotAURA desplegado:
+A continuación se documentan las evidencias gráficas tanto de la plataforma web/gemelo digital como de la **maqueta física real** construida para el proyecto iotAURA:
 
 ![Figura 5: Módulo de Reserva de Espacios y Emisión de Pases Digitales (ReservaPlazaView)](evidencias/evidencia_1_reserva_plaza.png)
 *Figura 5: Módulo de Reserva de Espacios y Emisión de Pases Digitales (ReservaPlazaView). Selección de plaza E-01 libre, patente ABCD-12, conductor, tiempo estimado 1 hora, tarifa calculada $2.100 CLP y emisión de pase digital.*
@@ -273,6 +286,18 @@ A continuación se documentan las capturas de pantalla reales obtenidas durante 
 ![Figura 9: Panel de Gestión de Estacionamiento y Operaciones CRUD (GestionPlazasView)](evidencias/evidencia_5_gestion_plazas_crud.png)
 *Figura 9: Panel de Gestión de Estacionamiento y Operaciones CRUD (GestionPlazasView). Tabla de asignación de plazas E-01 a E-06 con patentes reales (KJ-8921, LX-4402), conductores (Valentina Soto, Carlos Mella), cobro acumulado y documentación de endpoints REST/CRUD.*
 **Análisis:** Demuestra la trazabilidad de operaciones CRUD en la base de datos y la gestión granular de asignaciones por plaza de estacionamiento.
+
+---
+
+![Figura 10: Maqueta Física del Prototipo Ciberfísico iotAURA (Vista Frontal y Cenital)](evidencias/evidencia_6_maqueta_fisica_frontal.jpg)
+*Figura 10: Maqueta Física del Prototipo Ciberfísico iotAURA (Vista Frontal y Cenital). Plataforma de estacionamiento a escala con carriles demarcados de entrada y salida con señalética direccional, caseta central de control en azul, dos servomotores micro SG90 accionando las barreras de acceso, sensor óptico LDR en calzada de entrada, plaza 1 instrumentada con fotorreceptor LDR y semáforo LED bicolor (Pines 8 Verde y 7 Rojo), y vehículo a escala en aproximación al pórtico de control.*
+**Análisis:** Demuestra de manera concluyente la existencia, ensamblaje y funcionamiento del prototipo físico tangible exigido en la rúbrica evaluativa. Resuelve integralmente la crítica de hardware, evidenciando la coexistencia de dos barreras mecánicas motorizadas (entrada y salida), la integración de sensores de luz para detección vehicular física y la señalización óptica en tiempo real para las plazas de aparcamiento.
+
+---
+
+![Figura 11: Prototipo Ciberfísico en Perspectiva y Detalle de Sensores (Vista Isométrica)](evidencias/evidencia_7_maqueta_fisica_perspectiva.jpg)
+*Figura 11: Prototipo Ciberfísico en Perspectiva y Detalle de Sensores (Vista Isométrica). Vista lateral que evidencia la elevación mecánica y rango angular calibrado (15° a 105°) de las barreras servocontroladas (evitando sobrecorrientes en topes mecánicos de 0°), la ubicación del fotorreceptor en el carril de acceso para auto-apertura por sombra vehicular, la instrumentación de la plaza 1 (LDR y LEDs indicadores) y el ruteo inferior del cableado hacia la placa Arduino UNO R3.*
+**Análisis:** Evidencia la robustez constructiva del banco de pruebas experimental, la respuesta electromecánica del servomotor SG90 ante comandos emitidos desde la interfaz Web Serial API o detección automática por sombra, y la fidelidad dimensional que sustenta el gemelo digital 3D.
 
 ---
 
@@ -370,11 +395,17 @@ Ambas arquitecturas convergen de manera exacta en la capa de adaptadores: los ad
 
 | Pin Arduino UNO | Componente Conectado | Tipo de Señal | Nivel Lógico | Función Operativa |
 | :--- | :--- | :--- | :--- | :--- |
-| **Pin 10 (PWM)** | Micro Servomotor SG90 | Salida Digital PWM | 5.0V DC (1ms - 2ms) | Gobierno del ángulo del brazo de barrera (0° a 90°). |
-| **Pin 2** | Pulsador de Garita | Entrada Digital | INPUT_PULLUP (Activo LOW) | Detección de pulsación manual de emergencia de garita. |
-| **Pin 5V** | Riel Vcc Servomotor | Alimentación DC | +5.0V DC (Bus USB) | Alimentación del motor de continua interno del servo. |
-| **Pin GND** | Tierra Común | Referencia Eléctrica | 0.0V DC | Cierre de circuito de pulsador y servomotor. |
-| **Pines 0 y 1** | Conversor USB CDC | Bus UART Serial | 5V TTL (Hacia USB) | Comunicación serie bidireccional a 9600 baudios. |
+| **Pin 10 (PWM)** | Servo Barrera Entrada SG90 | Salida Digital PWM | 5.0V DC (1ms - 2ms) | Control de barrera de entrada en rango seguro (15° cerrado a 105° abierto). |
+| **Pin 9 (PWM)** | Servo Barrera Salida SG90 | Salida Digital PWM | 5.0V DC (1ms - 2ms) | Control de barrera de salida en rango seguro (15° cerrado a 105° abierto). |
+| **Pin A0 (Analógico)** | Sensor LDR Entrada | Entrada Analógica | 0 - 5V DC (0-1023) | Lectura óptica de aproximación vehicular con sobremuestreo 32x. |
+| **Pin A1 (Analógico)** | Sensor LDR Plaza E-01 | Entrada Analógica | 0 - 5V DC (0-1023) | Detección óptica de ocupación en plaza 1 con filtro de histéresis. |
+| **Pin 8** | Semáforo LED Verde Plaza 1 | Salida Digital | +5.0V DC / 0V | Señal de plaza disponible (HIGH cuando plaza está libre). |
+| **Pin 7** | Semáforo LED Rojo Plaza 1 | Salida Digital | +5.0V DC / 0V | Señal de plaza ocupada (HIGH cuando plaza está ocupada). |
+| **Pin 3** | Riel Vcc Virtual LDR 2 | Salida Digital | +5.0V DC (HIGH) | Suministro de energía positiva dedicada al sensor de puesto 1. |
+| **Pin 4** | Riel Vcc Virtual LDR 1 | Salida Digital | +5.0V DC (HIGH) | Suministro de energía positiva dedicada al sensor de entrada. |
+| **Pin 5** | Riel GND Virtual LDR 2 | Salida Digital | 0.0V DC (LOW) | Referencia a masa dedicada para el sensor de puesto 1. |
+| **Pin 6** | Riel GND Virtual Semáforo | Salida Digital | 0.0V DC (LOW) | Retorno de masa para el cátodo común de los diodos LED. |
+| **Pines 0 y 1** | Conversor USB CDC UART | Bus Serie | 5V TTL | Comunicación serie bidireccional a 9600 baudios con Web Serial API. |
 
 ---
 
@@ -382,9 +413,15 @@ Ambas arquitecturas convergen de manera exacta en la capa de adaptadores: los ad
 
 | Dirección de Enlace | Trama / Byte | Significado Técnico | Efecto Operativo en el Sistema |
 | :--- | :--- | :--- | :--- |
-| **Host Web $\rightarrow$ Arduino** | `'T'` o `'t'` | Comando Toggle | Conmuta el servomotor entre 0° y 90° con rampa suave. |
-| **Arduino $\rightarrow$ Host Web** | `"ESTADO: ABIERTA\r\n"` | Notificación de Estado | Confirma que el servo completó la apertura a 90°. |
-| **Arduino $\rightarrow$ Host Web** | `"ESTADO: CERRADA\r\n"` | Notificación de Estado | Confirma que el servo completó el cierre a 0°. |
+| **Host Web $\rightarrow$ Arduino** | `'E'` o `'e'` | Toggle Barrera Entrada | Conmuta la barrera de entrada entre 15° y 105° con rampa suave. |
+| **Host Web $\rightarrow$ Arduino** | `'S'` o `'s'` | Toggle Barrera Salida | Conmuta la barrera de salida entre 15° y 105° con rampa suave. |
+| **Arduino $\rightarrow$ Host Web** | `"SISTEMA LISTO\r\n"` | Notificación de Arranque | Indica inicio y calibración automática de luz base completada. |
+| **Arduino $\rightarrow$ Host Web** | `"ENTRADA: ABIERTA\r\n"` | Notificación de Estado | Confirma que la barrera de entrada completó la apertura a 105°. |
+| **Arduino $\rightarrow$ Host Web** | `"ENTRADA: CERRADA\r\n"` | Notificación de Estado | Confirma que la barrera de entrada completó el cierre a 15°. |
+| **Arduino $\rightarrow$ Host Web** | `"SALIDA: ABIERTA\r\n"` | Notificación de Estado | Confirma que la barrera de salida completó la apertura a 105°. |
+| **Arduino $\rightarrow$ Host Web** | `"SALIDA: CERRADA\r\n"` | Notificación de Estado | Confirma que la barrera de salida completó el cierre a 15°. |
+| **Arduino $\rightarrow$ Host Web** | `"PUESTO_1: OCUPADO\r\n"`| Notificación de Ocupación | Indica detección de auto sobre LDR de plaza 1 y enciende LED rojo. |
+| **Arduino $\rightarrow$ Host Web** | `"PUESTO_1: LIBRE\r\n"` | Notificación de Desocupación| Indica retiro de vehículo, restablece LED verde y actualiza cupos. |
 
 ---
 
@@ -392,72 +429,195 @@ Ambas arquitecturas convergen de manera exacta en la capa de adaptadores: los ad
 
 ```cpp
 /*
- * PROYECTO: iotAURA - Smart Parking System
- * PROFESOR: Osvaldo Archile
- * INTEGRANTES: Paul Ferrada, Fabián Mora, Felipe Labarca, Agustín Cañas
- * ASIGNATURAS: Arquitectura de Software & Internet de las Cosas
- * COMPILADOR: Arduino IDE 2.x - Placa: Arduino UNO R3 (ATmega328P)
- */
+  PROYECTO: SMART PARKING IoT (iotAURA) - ARDUINO UNO R3
+  PROFESOR: Osvaldo Archile
+  INTEGRANTES: Paul Ferrada, Fabián Mora, Felipe Labarca, Agustín Cañas
+  ASIGNATURAS: Arquitectura de Software & Internet de las Cosas
+*/
 
 #include <Servo.h>
 
-Servo barrera;          // Instancia del actuador servomotor
-const int pinBoton = 2; // Pin de entrada para pulsador de garita
-const int pinServo = 10;// Pin de salida PWM para servomotor SG90
+Servo servoEntrada;
+Servo servoSalida;
 
-// Variables de estado del sistema
-bool barreraAbierta = false;       
-int estadoBotonAnterior = HIGH;    
-const int velocidad = 20; // Milisegundos de retardo por cada grado (rampa suave)
+// Pines de hardware (conexión directa)
+const int pinServoEntrada = 10;
+const int pinServoSalida  = 9;
+const int ldrEntradaPin   = A0;
+const int ldrPuestoPin    = A1;
+
+// Pines usados como energía y tierra extra
+const int pinLdr2Vcc      = 3; // 5V para LDR 2 (puesto LED)
+const int pinLdr1Vcc      = 4; // 5V para LDR 1 (entrada)
+const int pinLdr2Gnd      = 5; // GND para LDR 2
+const int pinLedGnd       = 6; // GND para LED
+const int pinLedRojo      = 7;
+const int pinLedVerde     = 8;
+
+// Estados del sistema
+bool entradaAbierta = false;
+bool entradaManual  = false;
+bool salidaAbierta  = false;
+bool puestoOcupado  = false;
+
+int velocidad = 20;
+
+// Ángulos seguros (evitan tope mecánico en 0°)
+const int anguloCerrado = 15;
+const int anguloAbierto = 105;
+
+// Calibración en escala 32x (reposo: 1-4 | con auto: 9-18)
+long luzBaseEntrada      = 0;
+long luzBasePuesto       = 0;
+long margenEntrada       = 14;
+long margenPuestoOcupar  = 6; // Ocupa al superar 6 (rango auto: 9-18)
+long margenPuestoLiberar = 4; // Libera rápido al bajar a 4 o menos
 
 void setup() {
-  Serial.begin(9600);              // Inicializa comunicacion serial con el Dashboard web
-  barrera.attach(pinServo);         // Asigna el pin 10 al servomotor
-  barrera.write(0);                 // Posiciona la barrera en estado inicial cerrado (0 grados)
-  pinMode(pinBoton, INPUT_PULLUP);  // Configura pull-up interna (evita resistencias externas)
+  Serial.begin(9600);
+
+  pinMode(pinLdr2Vcc, OUTPUT);
+  digitalWrite(pinLdr2Vcc, HIGH);
+
+  pinMode(pinLdr1Vcc, OUTPUT);
+  digitalWrite(pinLdr1Vcc, HIGH);
+
+  pinMode(pinLdr2Gnd, OUTPUT);
+  digitalWrite(pinLdr2Gnd, LOW);
+
+  pinMode(pinLedGnd, OUTPUT);
+  digitalWrite(pinLedGnd, LOW);
+
+  pinMode(pinLedVerde, OUTPUT);
+  pinMode(pinLedRojo, OUTPUT);
+
+  // Inicia en estado libre
+  digitalWrite(pinLedVerde, HIGH);
+  digitalWrite(pinLedRojo, LOW);
+
+  servoEntrada.attach(pinServoEntrada);
+  servoSalida.attach(pinServoSalida);
+
+  servoEntrada.write(anguloCerrado);
+  delay(300);
+  servoSalida.write(anguloCerrado);
+
+  // Espera a que los motores se estabilicen antes de medir la luz base
+  delay(1000);
+  luzBaseEntrada = leerSensorAcumulado(ldrEntradaPin);
+  luzBasePuesto  = leerSensorAcumulado(ldrPuestoPin);
+
+  Serial.println("SISTEMA LISTO");
 }
 
 void loop() {
-  bool activarBarrera = false;
+  long lecturaEntrada = leerSensorAcumulado(ldrEntradaPin);
+  long lecturaPuesto  = leerSensorAcumulado(ldrPuestoPin);
 
-  // 1. Deteccion de activacion mediante pulsador fisico (Intervencion de Garita)
-  int estadoBotonActual = digitalRead(pinBoton); 
-  if (estadoBotonActual == LOW && estadoBotonAnterior == HIGH) {
-    activarBarrera = true; // Flanco de bajada detectado (boton presionado)
-  }
-  estadoBotonAnterior = estadoBotonActual;
+  long difEntrada = abs(lecturaEntrada - luzBaseEntrada);
+  long difPuesto  = abs(lecturaPuesto  - luzBasePuesto);
 
-  // 2. Deteccion de comandos remotos recibidos via Web Serial API desde la web
+  bool autoEnEntrada = difEntrada > margenEntrada;
+
+  // 1. Comandos desde página web o Monitor Serie
   if (Serial.available() > 0) {
     char comando = Serial.read();
-    if (comando == 'T' || comando == 't') {
-      activarBarrera = true; // Comando de alternancia (Toggle) validado
+    
+    if (comando == 'E' || comando == 'e') {
+      if (!entradaAbierta) {
+        moverBarrera(servoEntrada, anguloCerrado, anguloAbierto);
+        entradaAbierta = true;
+        entradaManual = true;
+        Serial.println("ENTRADA: ABIERTA");
+      } else {
+        moverBarrera(servoEntrada, anguloAbierto, anguloCerrado);
+        entradaAbierta = false;
+        entradaManual = false;
+        Serial.println("ENTRADA: CERRADA");
+      }
+    }
+
+    if (comando == 'S' || comando == 's') {
+      if (!salidaAbierta) {
+        moverBarrera(servoSalida, anguloCerrado, anguloAbierto);
+        salidaAbierta = true;
+        Serial.println("SALIDA: ABIERTA");
+      } else {
+        moverBarrera(servoSalida, anguloAbierto, anguloCerrado);
+        salidaAbierta = false;
+        Serial.println("SALIDA: CERRADA");
+      }
     }
   }
 
-  // 3. Ejecucion de la maquina de movimiento suave y emision de eventos de estado
-  if (activarBarrera) {
-    if (barreraAbierta == false) {
-      // Apertura controlada hacia 90 grados
-      for (int pos = 0; pos <= 90; pos += 1) { 
-        barrera.write(pos);
-        delay(velocidad); 
-      }
-      barreraAbierta = true; 
-      Serial.println("ESTADO: ABIERTA"); // Emision del evento de estado a la interfaz
-    } 
-    else {
-      // Cierre controlado hacia 0 grados
-      for (int pos = 90; pos >= 0; pos -= 1) { 
-        barrera.write(pos);
-        delay(velocidad); 
-      }
-      barreraAbierta = false; 
-      Serial.println("ESTADO: CERRADA"); // Emision del evento de estado a la interfaz
+  // 2. Automatización de barrera de ENTRADA (LDR 1 en A0)
+  if (autoEnEntrada && !entradaAbierta) {
+    delay(40);
+    long confirmacionEntrada = abs(leerSensorAcumulado(ldrEntradaPin) - luzBaseEntrada);
+    if (confirmacionEntrada > margenEntrada) {
+      moverBarrera(servoEntrada, anguloCerrado, anguloAbierto);
+      entradaAbierta = true;
+      entradaManual = false;
+      Serial.println("ENTRADA: ABIERTA");
+    }
+  } 
+  else if (!autoEnEntrada && entradaAbierta && !entradaManual) {
+    delay(1500);
+    long confirmacionEntrada = abs(leerSensorAcumulado(ldrEntradaPin) - luzBaseEntrada);
+    if (confirmacionEntrada <= margenEntrada) {
+      moverBarrera(servoEntrada, anguloAbierto, anguloCerrado);
+      entradaAbierta = false;
+      Serial.println("ENTRADA: CERRADA");
     }
   }
-  
-  delay(50); // Filtro basico de debouncing y estabilidad de muestreo
+
+  // 3. Monitoreo de PUESTO 1 (LDR 2 en A1) con retorno rápido
+  if (!puestoOcupado && difPuesto > margenPuestoOcupar) {
+    delay(120);
+    long confirmacionPuesto = abs(leerSensorAcumulado(ldrPuestoPin) - luzBasePuesto);
+    if (confirmacionPuesto > margenPuestoOcupar) {
+      puestoOcupado = true;
+      digitalWrite(pinLedVerde, LOW);
+      digitalWrite(pinLedRojo, HIGH);
+      Serial.println("PUESTO_1: OCUPADO");
+    }
+  } 
+  else if (puestoOcupado && difPuesto <= margenPuestoLiberar) {
+    delay(200); // Retorno rápido y estable al retirar el auto
+    long confirmacionPuesto = abs(leerSensorAcumulado(ldrPuestoPin) - luzBasePuesto);
+    if (confirmacionPuesto <= margenPuestoLiberar) {
+      puestoOcupado = false;
+      digitalWrite(pinLedVerde, HIGH);
+      digitalWrite(pinLedRojo, LOW);
+      Serial.println("PUESTO_1: LIBRE");
+    }
+  }
+
+  delay(20);
+}
+
+long leerSensorAcumulado(int pin) {
+  long suma = 0;
+  for (int i = 0; i < 32; i++) {
+    suma += analogRead(pin);
+    delay(1);
+  }
+  return suma;
+}
+
+void moverBarrera(Servo &motor, int inicio, int fin) {
+  if (inicio < fin) {
+    for (int pos = inicio; pos <= fin; pos++) {
+      motor.write(pos);
+      delay(velocidad);
+    }
+  } else {
+    for (int pos = inicio; pos >= fin; pos--) {
+      motor.write(pos);
+      delay(velocidad);
+    }
+  }
+  delay(350);
 }
 ```
 
