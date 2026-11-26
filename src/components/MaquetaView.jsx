@@ -398,20 +398,20 @@ export default function MaquetaView({
               </div>
 
               <div className="flex items-center justify-between text-xs">
-                <span className="text-zinc-400">LDR Entrada / Vcc:</span>
+                <span className="text-zinc-400">LDR Entrada (Pin A0):</span>
                 <span className="font-bold text-amber-300 font-mono bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800 text-[11px]">
-                  Pin A0 (Vcc Pin 4)
+                  Vcc Pin 4 · Umbral Δ &gt; 14
                 </span>
               </div>
 
               <div className="flex items-center justify-between text-xs">
-                <span className="text-zinc-400">LDR Puesto 1 / GND:</span>
+                <span className="text-zinc-400">LDR Puesto 1 (Pin A1):</span>
                 <span className={`font-bold font-mono px-2 py-0.5 rounded text-[11px] ${
                   slots.find(s => s.id === 1 || s.code === 'E-01')?.status === 'occupied'
                     ? 'bg-red-950 text-red-300 border border-red-800 animate-pulse'
                     : 'bg-emerald-950 text-emerald-300 border border-emerald-800'
                 }`}>
-                  Pin A1 (GND Pin 5) · {slots.find(s => s.id === 1 || s.code === 'E-01')?.status === 'occupied' ? 'OCUPADO' : 'LIBRE'}
+                  Vcc 3 / GND 5 · {slots.find(s => s.id === 1 || s.code === 'E-01')?.status === 'occupied' ? 'OCUPADO' : 'LIBRE'}
                 </span>
               </div>
 
@@ -436,6 +436,13 @@ export default function MaquetaView({
                     Pin 7 (Rojo)
                   </span>
                 </div>
+              </div>
+
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-zinc-400">Filtro &amp; Histéresis:</span>
+                <span className="text-emerald-400 font-mono text-[10px]">
+                  32x Muestras · Ocupa &gt;6 / Libera ≤4
+                </span>
               </div>
 
               <div className="flex items-center justify-between text-xs">
@@ -580,16 +587,18 @@ export default function MaquetaView({
           <div>
             <div className="flex items-center gap-2 flex-wrap">
               <h4 className="font-bold text-zinc-900 dark:text-white text-sm">
-                Control IoT Dual: 2x Servos SG90 (Pines 10 y 9) + 2x LDRs (A0/A1) + Semáforo Bicolor (Pines 8 y 7)
+                Control IoT Avanzado: Sobremuestreo 32x + Histéresis Adaptativa + Rieles Virtuales
               </h4>
               <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-sky-100 text-sky-800 dark:bg-sky-950 dark:text-sky-300 border border-sky-300">
-                Ángulos Seguros: 15° a 105°
+                Ángulos 15° - 105°
+              </span>
+              <span className="px-2 py-0.5 rounded text-[10px] font-bold bg-emerald-100 text-emerald-800 dark:bg-emerald-950 dark:text-emerald-300 border border-emerald-300">
+                Pines 3, 4, 5, 6
               </span>
             </div>
             <p className="text-xs text-zinc-600 dark:text-zinc-400 mt-1 max-w-3xl leading-relaxed">
-              <strong>Protección Mecánica y Rieles Virtuales:</strong> Los servos operan entre 15° (cerrado) y 105° (abierto) para evitar zumbidos y topes mecánicos. Los pines digitales 4 (Vcc LDR1), 5 (GND LDR2) y 6 (GND LEDs) proveen alimentación directa y limpia.<br />
-              <strong>Entrada &amp; Salida:</strong> LDR en A0 abre automáticamente la Barrera de Entrada (Pin 10); la Barrera de Salida (Pin 9) conmuta con comando <strong>&apos;S&apos;</strong>.<br />
-              <strong>Puesto 1 (Plaza E-01):</strong> Monitoreado por LDR en A1; conmuta físicamente el <strong>LED Verde (Pin 8)</strong> al <strong>LED Rojo (Pin 7)</strong> al detectar vehículo y actualiza la nube en tiempo real.
+              <strong>Filtrado Digital 32x &amp; Histéresis:</strong> Cada lectura promedia 32 muestras consecutivas eliminando ruido electromagnético. La plaza E-01 (LDR A1) se ocupa al superar Δ &gt; 6 y libera de forma instantánea y estable al bajar a ≤ 4, conmutando los LEDs en <strong>Pin 8 (Verde)</strong> y <strong>Pin 7 (Rojo)</strong>.<br />
+              <strong>Barreras &amp; Rieles Virtuales:</strong> Los servos operan entre 15° y 105° para evitar sobrecarga mecánica. Alimentación y masa limpias provistas directamente por los pines digitales 3 (Vcc LDR2), 4 (Vcc LDR1), 5 (GND LDR2) y 6 (GND LEDs). Control web con <strong>&apos;E&apos;</strong> y <strong>&apos;S&apos;</strong>.
             </p>
           </div>
         </div>
